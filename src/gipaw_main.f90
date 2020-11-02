@@ -46,7 +46,7 @@ PROGRAM gipaw_main
   USE lsda_mod,        ONLY : nspin
   USE wvfct,           ONLY : nbnd
   USE uspp,            ONLY : okvan
-  USE wvfct,           ONLY : nbnd
+  !USE wvfct,           ONLY : nbnd
   USE io_global,       ONLY : stdout
   USE noncollin_module,ONLY : noncolin
   USE command_line_options, ONLY: input_file_, command_line, ndiag_
@@ -147,6 +147,10 @@ PROGRAM gipaw_main
 
   ! calculation
   select case ( trim(job) )
+  case ( 'morb' )
+     if (okvan) call errore('gipaw_main', 'morb not available with ultrasoft', 1)
+     call orbm
+  
   case ( 'nmr' )
      call suscept_crystal   
      
