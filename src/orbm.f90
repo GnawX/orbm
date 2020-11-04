@@ -6,7 +6,7 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 !-----------------------------------------------------------------------
-SUBROUTINE suscept_crystal
+SUBROUTINE orbm
   !-----------------------------------------------------------------------
   !
   ! This routine calculates the f-sum rule, the magnetic susceptibility and
@@ -861,4 +861,4 @@ CONTAINS
   END SUBROUTINE restart_cleanup
 
 
-END SUBROUTINE suscept_crystal
+END SUBROUTINE orbm
