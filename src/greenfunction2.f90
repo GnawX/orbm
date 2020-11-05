@@ -11,7 +11,7 @@ SUBROUTINE greenfunction(ik, psi, g_psi, q)
   ! ... Apply the Green function operator
   ! ...
   ! ... [H^(0) - alpha P_i - E_i^(0)] |Gpsi_i> = - Q_i H^(1)|psi_i^(0)>
-  ! ...
+  ! ... Q = 1 - |psi_n><psi_n| instead of 1 - \sum_n |psi_n><psi_n| in greenfunction.f90
   ! ... We use Hartree atomic units; since G is the inverse of an
   ! ... energy: G => G / ryd_to_hartree
   !
@@ -24,7 +24,7 @@ SUBROUTINE greenfunction(ik, psi, g_psi, q)
   USE pwcom,                       ONLY : ef
   USE wvfct,                       ONLY : nbnd, et, npwx, g2kin
   USE gvect,                       ONLY : g
-  USE uspp,                        ONLY : nkb, vkb
+  USE uspp,                        ONLY : nkb, vkb, okvan
   USE mp_pools,                    ONLY : intra_pool_comm
   USE mp,                          ONLY : mp_sum
   USE ldaU,                        ONLY : lda_plus_u, wfcU
@@ -132,6 +132,7 @@ SUBROUTINE greenfunction(ik, psi, g_psi, q)
 #endif
 
 
+  if (okvan) then
   ! this is the case with overlap (ultrasoft)
   ! g_psi is used as work space to store S|evq>
   ! |psi> = -(|psi> - S|evq><evq|psi>)
@@ -151,6 +152,10 @@ SUBROUTINE greenfunction(ik, psi, g_psi, q)
   ! replicate wfc
   call mp_sum(g_psi, inter_bgrp_comm)
 #endif
+
+  else
+     g_psi(:,:) = evq(:,:)
+  endif
 
   if (lgauss) then
      ! metallic case
