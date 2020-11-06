@@ -195,86 +195,14 @@ SUBROUTINE orbm
     
   morb = mlc + mic - 2.d0*ef*berry
 
-  write(stdout,'(5X,''M_orb              = '',3(F14.6))') morb
-    
-
-
-
-  enddo  ! end of loop over k-point
-
-  ! Parallel reductions
-#ifdef __MPI
-#ifdef __BANDS
-  ! reduce over G-vectors
-  call mp_sum( f_sum, intra_bgrp_comm )
-  call mp_sum( f_sum_occ, intra_bgrp_comm )
-  call mp_sum( f_sum_nelec, intra_bgrp_comm )
-  call mp_sum( q_pGv, intra_bgrp_comm )
-  call mp_sum( q_vGv, intra_bgrp_comm )
-  call mp_sum( delta_g_rmc, intra_bgrp_comm)
-  ! reduce over band groups
-  call mp_sum( f_sum, inter_bgrp_comm )
-  call mp_sum( f_sum_occ, inter_bgrp_comm )
-  call mp_sum( f_sum_nelec, inter_bgrp_comm )
-  call mp_sum( q_pGv, inter_bgrp_comm )
-  call mp_sum( q_vGv, inter_bgrp_comm )
-  call mp_sum( delta_g_rmc, inter_bgrp_comm) ! TODO: check this
-#else
-  ! reduce over G-vectors
-  call mp_sum( f_sum, intra_pool_comm )
-  call mp_sum( f_sum_occ, intra_pool_comm )
-  call mp_sum( f_sum_nelec, intra_pool_comm )
-  call mp_sum( q_pGv, intra_pool_comm )
-  call mp_sum( q_vGv, intra_pool_comm )
-  call mp_sum( delta_g_rmc, intra_pool_comm)
-#endif
-
-  ! reduce over k-point pools
-  call mp_sum( f_sum, inter_pool_comm )
-  call mp_sum( f_sum_occ, inter_pool_comm )
-  call mp_sum( f_sum_nelec, inter_pool_comm )
-  call mp_sum( q_pGv, inter_pool_comm )
-  call mp_sum( q_vGv, inter_pool_comm )
-  call mp_sum( delta_g_rmc, inter_pool_comm)
-
-  call mp_sum( j_bare_s, inter_pool_comm )
-  call mp_sum( sigma_diamagnetic, inter_pool_comm )
-  call mp_sum( sigma_paramagnetic, inter_pool_comm )
-  call mp_sum( sigma_paramagnetic_us, inter_pool_comm )
-  call mp_sum( sigma_paramagnetic_aug, inter_pool_comm )
-  call mp_sum( delta_g_rmc_gipaw, inter_pool_comm)
-  call mp_sum( delta_g_so_dia, inter_pool_comm )
-  call mp_sum( delta_g_so_para, inter_pool_comm )
-  call mp_sum( delta_g_so_para_us, inter_pool_comm )
-  call mp_sum( delta_g_so_para_aug, inter_pool_comm )
-
-  ! reduce over images (q-star)
-  if (nimage > 1) then
-    call mp_sum( f_sum, inter_image_comm )
-    call mp_sum( f_sum_occ, inter_image_comm )
-    call mp_sum( f_sum_nelec, inter_image_comm )
-    call mp_sum( q_pGv, inter_image_comm )
-    call mp_sum( q_vGv, inter_image_comm )
-    call mp_sum( j_bare_s, inter_image_comm )
-    call mp_sum( sigma_diamagnetic, inter_image_comm )
-    call mp_sum( sigma_paramagnetic, inter_image_comm )
-    call mp_sum( sigma_paramagnetic_us, inter_image_comm )
-    call mp_sum( sigma_paramagnetic_aug, inter_image_comm )
-    call mp_sum( delta_g_rmc, inter_image_comm)
-    call mp_sum( delta_g_rmc_gipaw, inter_image_comm)
-    call mp_sum( delta_g_so_dia, inter_image_comm )
-    call mp_sum( delta_g_so_para, inter_image_comm )
-    call mp_sum( delta_g_so_para_us, inter_image_comm )
-    call mp_sum( delta_g_so_para_aug, inter_image_comm )
-  endif
-#endif
-
+  
   
   !====================================================================
   ! print out results
   !====================================================================
-  write(stdout,'(5X,''End of magnetic susceptibility calculation'')')
+  write(stdout,'(5X,''End of orbital magnetization calculation'')')
   write(stdout,*)
+  write(stdout,'(5X,''M_orb              = '',3(F14.6))') morb
 
   ! free memory as soon as possible
   deallocate( p_evc, vel_evc, aux, G_vel_evc )
