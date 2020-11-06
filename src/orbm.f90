@@ -9,9 +9,9 @@
 SUBROUTINE orbm
   !-----------------------------------------------------------------------
   !
-  ! This routine calculates the f-sum rule, the magnetic susceptibility and
-  ! the induced current, using the "crystal method".
-  ! 
+  ! This routine calculates the orbital magnetization using the modern theory
+  ! of orbital magnetization.
+  !  m = \alpha/2 Im \sum_nk <d u_nk| \times (H+E-2\mu) |d u_nk>
   ! References:
   !   [1] Phys. Rev. B 63, 245101 (2001)       (norm-conserving GIPAW)
   !   [2] Phys. Rev. B 76, 024401 (2007)       (ultrasoft)
@@ -31,7 +31,7 @@ SUBROUTINE orbm
   USE wvfct,                  ONLY : nbnd, npwx, wg, g2kin, current_k
   USE gvecw,                  ONLY : gcutw
   USE lsda_mod,               ONLY : current_spin, isk
-  USE becmod,                 ONLY : calbec
+  USE becmod,                 ONLY : calbec, becp, allocate_bec_type, deallocate_bec_type
   USE symme,                  ONLY : symmatrix
   USE constants,              ONLY : pi
   USE gvect,                  ONLY : ngm, g
@@ -58,118 +58,46 @@ SUBROUTINE orbm
 
   ! the following three quantities are for norm-conserving PPs
   complex(dp), allocatable, dimension(:,:,:) :: p_evc         ! p_k|evc>
-  complex(dp), allocatable, dimension(:,:,:) :: vel_evc       ! v_{k+q,k}|evc>
-  complex(dp), allocatable, dimension(:,:,:) :: G_vel_evc     ! G_{k+q} v_{k+q,k}|evc>
-  ! in addition, the following two quantities are for ultrasoft PPs
-  complex(dp), allocatable, dimension(:,:,:) :: svel_evc      ! s_{k+q,k}|evc>
-  complex(dp), allocatable, dimension(:,:,:) :: u_svel_evc    ! sum|evq><evq|s_{k+q,k}|evc>
+  complex(dp), allocatable, dimension(:,:,:) :: vel_evc       ! v_{k,k}|evc>
+  complex(dp), allocatable, dimension(:,:,:) :: evc1          ! du/dk
   ! temporary working array, same size as evc/evq
   complex(dp), allocatable :: aux(:,:)
-
-  ! induced current on the soft and fine mesh
-  real(dp), allocatable, dimension(:,:,:,:) :: j_bare_s, j_bare
-
-  ! induced magnetic field in reciprocal and real space
-  real(dp), allocatable :: B_ind_r(:,:,:,:)
-  complex(dp), allocatable :: B_ind(:,:,:,:)
-
-  ! f-sum rule: Eq.(A7) of [1]
-  real(dp) :: f_sum(3,3)                             ! Eq.(C7) of [2]
-  real(dp) :: f_sum_occ(3,3)                         ! Eq.(C7) of [2]
-  real(dp) :: f_sum_nelec
-
-  ! Susceptibility (pGv => HH in Paratec, vGv => VV in Paratec)
-  real(dp) :: q_pGv(3,3,-1:1), q_vGv(3,3,-1:1)       ! Eq.(65) of [1]
-  real(dp) :: f_pGv(3,3,-1:1), f_vGv(3,3,-1:1)       ! Eq.(64) of [1]
-  real(dp) :: chi_bare_pGv(3,3), chi_bare_vGv(3,3)   ! Eq.(64) of [1]
-
-  ! GIPAW terms
-  real(dp) :: diamagnetic_corr_tensor(3,3,nat)       ! Eq.(58) of [1]/Eq.(43) of [2]
-  real(dp) :: paramagnetic_corr_tensor(3,3,nat)      ! Eq.(44) of [1]
-  real(dp) :: paramagnetic_corr_tensor_us(3,3,nat)   ! Eq.(41) of [2] ("occ-occ" term)
-  real(dp) :: paramagnetic_corr_tensor_aug(3,3,nat)  ! Eq.(30) of [2] (L_R Q_R term)
-
-  ! Contributions to NMR chemical shift
-  real(dp) :: sigma_shape(3,3)
-  real(dp) :: sigma_bare(3,3,nat)
-  real(dp) :: sigma_diamagnetic(3,3,nat)
-  real(dp) :: sigma_paramagnetic(3,3,nat)
-  real(dp) :: sigma_paramagnetic_us(3,3,nat)
-  real(dp) :: sigma_paramagnetic_aug(3,3,nat)
-  real(dp) :: sigma_tot(3,3,nat)
-
-  ! Contributions to EPR g-tensor
-  real(dp) :: delta_g_rmc, delta_g_rmc_gipaw         ! relativistic mass correction
-  real(dp) :: delta_g_so(3,3)                        ! spin-orbit
-  real(dp) :: delta_g_soo(3,3), delta_g_soo2(3,3)    ! spin-other-orbit (two versions)
-  real(dp) :: delta_g_so_para(3,3), delta_g_so_para_aug(3,3)  ! gipaw terms
-  real(dp) :: delta_g_so_para_us(3,3), delta_g_so_dia(3,3)    ! gipaw terms
-  real(dp) :: diamagnetic_corr_tensor_so(3,3)
-  real(dp) :: paramagnetic_corr_tensor_so(3,3)
-  real(dp) :: paramagnetic_corr_tensor_aug_so(3,3)
-  real(dp) :: paramagnetic_corr_tensor_us_so(3,3)
+  complex(dp), allocatable :: hpsi(:)
+  real(dp) :: berry(3), mlc(3), mic(3)
 
   integer :: ik, iq, ik0, iq0
-  integer :: ipol, jpol, i, ibnd, isign, ispin
+  integer :: ipol, jpol, i, ibnd, isign, ispin, ii, jj
   real(dp) :: tmp(3,3), q(3), k_plus_q(3), braket
   integer :: s_min, s_maj, s_weight
   complex(dp), external :: zdotc
   real(dp), external :: get_clock
   integer :: npw
+  integer :: ind(2,3)
+  
+  ind(:,1) = (/ 2, 3 /)
+  ind(:,2) = (/ 3, 1 /)
+  ind(:,3) = (/ 1, 2 /)
+  mlc = 0.d0
+  mic = 0.d0
+  berry=0.d0
  
-  call start_clock('suscept_crystal')
+  call start_clock('orbm')
   !-----------------------------------------------------------------------
   ! allocate memory
   !-----------------------------------------------------------------------
   allocate ( p_evc(npwx,nbnd,3), vel_evc(npwx,nbnd,3) )
-  allocate ( aux(npwx,nbnd), G_vel_evc(npwx,nbnd,3) )
-  allocate ( j_bare_s(dffts%nnr,3,3,nspin) )
-  if (okvan) then
-      allocate ( svel_evc(npwx,nbnd,3), u_svel_evc(npwx,nbnd,3) )
-  else
-      allocate ( svel_evc(1,1,3), u_svel_evc(1,1,3) )  ! to save some memory
-  endif
-  svel_evc = 0.d0 
-  u_svel_evc = 0.d0
+  allocate ( aux(npwx,nbnd), evc1(npwx,nbnd,3), hpsi(npwx) )
 
-  ! zero the f-sum rule
-  f_sum(:,:) = 0.d0
-  f_sum_occ(:,:) = 0.d0
-  f_sum_nelec = 0.d0
- 
-  ! zero the Q tensors
-  q_pGv(:,:,:) = 0.d0
-  q_vGv(:,:,:) = 0.d0
-
-  ! zero the current
-  j_bare_s(:,:,:,:) = (0.d0,0.d0)
   
-  ! zero the chemical shift
-  sigma_shape = 0.d0
-  sigma_bare = 0.d0
-  sigma_diamagnetic = 0.d0
-  sigma_paramagnetic = 0.d0
-  sigma_paramagnetic_us = 0.d0
-  sigma_paramagnetic_aug = 0.d0 
+  
 
-  ! zero the EPR contributions
-  delta_g_rmc = 0.d0
-  delta_g_rmc_gipaw = 0.d0
-  delta_g_so = 0.d0
-  delta_g_soo = 0.d0
-  delta_g_soo2 = 0.d0
-  delta_g_so_para = 0.d0
-  delta_g_so_para_aug = 0.d0
-  delta_g_so_para_us = 0.d0
-  delta_g_so_dia = 0.d0
 
   ! print memory estimate
   call gipaw_memory_report
 
-  ! EPR: select minority and majority spins
-  if (job == 'g_tensor') call select_spin(s_min, s_maj)
 
-  write(stdout, '(5X,''Computing the magnetic susceptibility'',$)')
+
+  write(stdout, '(5X,''Computing the orbital magnetization'',$)')
   write(stdout, '(5X,''isolve='',I1,4X,''ethr='',E12.4)') isolve, conv_threshold
 
   ! check for recover file
@@ -178,6 +106,7 @@ SUBROUTINE orbm
   !====================================================================
   ! loop over k-points
   !====================================================================
+  q(:) = 0.d0
   do ik = 1, nks
     ! skip if already done in a previous run
     if ( ik < ik0 ) cycle 
@@ -191,51 +120,65 @@ SUBROUTINE orbm
       ik, nks, get_clock('GIPAW')
 #endif
 
+    ! read wfcs from file and compute becp
+    call get_buffer (evc, nwordwfc, iunwfc, ik)
+
+    ! calculate du/dk    
+    vel_evc(:,:,:) = (0.d0,0.d0)
+    do ipol = 1,3
+       call apply_vel(evc, vel_evc(1,1,ipol), ik, ipol, q)
+       aux(:,:) = vel_evc(:,:,ipol)
+       call greenfunction(ik, aux, evc1(1,1,ipol), q)
+    enddo
+    
+    ! set up hamiltonian
+    call allocate_bec_type(nkb, nbnd, becp)
     current_k = ik
     current_spin = isk(ik)
     npw = ngk(ik)
 
-    if (job == 'g_tensor') then
-      s_weight = +1
-      if (current_spin == s_min) s_weight = -1
-    endif
-
-    ! initialize at k-point k 
     call gk_sort(xk(1,ik), ngm, g, gcutw, npw, igk_k(1,ik), g2kin)
     g2kin(:) = g2kin(:) * tpiba2
     call init_us_2(npw, igk_k(1,ik), xk(1,ik), vkb)
     
-    ! read wfcs from file and compute becp
-    call get_buffer (evc, nwordwfc, iunwfc, ik)
 #ifdef __BANDS
-    ! replicate wavefunction over band groups (not needed anymore???)
-    !!call mp_sum(evc, inter_bgrp_comm)
+    call calbec_bands (npwx, npw, nkb, vkb, evc, becp%k, nbnd, ibnd_start, ibnd_end)
+#else
+    call calbec (npw, vkb, evc, becp, nbnd)
 #endif
-    call init_gipaw_2_no_phase (npw, igk_k(1,ik), xk(1,ik), paw_vkb)
-    call calbec (npw, paw_vkb, evc, paw_becp)
+    
+    ! loop over the bands
+#ifdef __BANDS
+    do ibnd = ibnd_start, ibnd_end
+#else
+    do ibnd = 1, nbnd
+#endif
+       do ipol = 1,3
+          ii = ind(1, ipol)
+          jj = ind(2, ipol)
+          ! IC term
+          braket = zdotc(npw, evc1(1,ibnd,ii), 1, evc1(1,ibnd,jj), 1)
+          mic(ipol) = mic(ipol) + 2.d0*wg(ibnd,ik)*et(ibnd,ik)*imag(braket)
+          berry(ipol) = berry(ipol) + 2.d0*wg(ibnd,ik)*et(ibnd,ik)*imag(braket)
+          ! LC term
+          call h_psi(npwx, npw, 1, evc1(1:npwx,ibnd,jj), hpsi)
+          braket = zdotc(npw, evc1(1,ibnd,ii), 1, hpsi, 1)
+          mlc(ipol) = mlc(ipol) + wg(ibnd,ik)*imag(braket)
+          
+          call h_psi(npwx, npw, 1, evc1(1:npwx,ibnd,ii), hpsi)
+          braket = zdotc(npw, evc1(1,ibnd,jj), 1, hpsi, 1)
+          mlc(ipol) = mlc(ipol) - wg(ibnd,ik)*imag(braket)
+       enddo ! ipol
+    enddo ! ibnd
+ enddo ! ik
+    
+    
 
-    ! this is the case q = 0
-    iq = 0
-    q(:) = 0.d0
-    call suscept_crystal_inner_qzero
 
-    ! now the star of q-points
-    do iq = 1, 6
-       ! iq=1 => k+qx, iq=2 => k-qx, iq=3 => k+qy, iq=4 => k-qy, iq=5 => k+qz, iq=6 => k-qz 
-       if (mod(iq,2) /= 0) then
-         i = (iq+1)/2
-         isign = 1
-       else
-         i = iq/2
-         isign = -1
-       endif
 
-       ! set the q vector
-       q(:) = 0.d0
-       q(i) = dble(isign) * q_gipaw
+    
 
-       call suscept_crystal_inner_q
-    enddo ! iq
+
 
     write(stdout,*)
 
