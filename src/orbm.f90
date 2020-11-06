@@ -170,17 +170,35 @@ SUBROUTINE orbm
           mlc(ipol) = mlc(ipol) - wg(ibnd,ik)*imag(braket)
        enddo ! ipol
     enddo ! ibnd
- enddo ! ik
+  enddo ! ik
     
+#ifdef __MPI
+#ifdef __BANDS
+  ! reduce over G-vectors
+  call mp_sum( mlc, intra_bgrp_comm )
+  call mp_sum( mic, intra_bgrp_comm )
+  call mp_sum( berry, intra_bgrp_comm )
+  ! reduce over band groups
+  call mp_sum( mlc, inter_bgrp_comm )
+  call mp_sum( mic, inter_bgrp_comm )
+  call mp_sum( berry, inter_bgrp_comm )
+#else
+  ! reduce over G-vectors
+  call mp_sum( mlc, intra_pool_comm )
+  call mp_sum( mic, intra_pool_comm )
+  call mp_sum( berry, intra_pool_comm )
+#endif
+  ! reduce over k-point pools
+  call mp_sum( mlc, inter_pool_comm )
+  call mp_sum( mic, inter_pool_comm )
+  call mp_sum( berry, inter_pool_comm )
+    
+  morb = mlc + mic - 2.d0*ef*berry
+
+  write(stdout,'(5X,''M_orb              = '',3(F14.6))') morb
     
 
 
-
-    
-
-
-
-    write(stdout,*)
 
   enddo  ! end of loop over k-point
 
