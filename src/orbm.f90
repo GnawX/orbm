@@ -23,33 +23,26 @@ SUBROUTINE orbm
   !   E. Kucukbenli                      Ultrasoft and PAW
   !
   USE kinds,                  ONLY : dp
-  USE io_global,              ONLY : stdout, ionode
+  USE io_global,              ONLY : stdout
   USE io_files,               ONLY : nwordwfc, iunwfc
-  USE cell_base,              ONLY : omega, tpiba, tpiba2
+  USE cell_base,              ONLY : tpiba2
   USE wavefunctions,          ONLY : evc
-  USE noncollin_module,       ONLY : noncolin, npol
+  USE noncollin_module,       ONLY : npol
   USE klist,                  ONLY : nks, wk, xk, igk_k, ngk
   USE wvfct,                  ONLY : nbnd, npwx, wg, g2kin, current_k
   USE ener,                   ONLY : ef
   USE uspp,                   ONLY : nkb, vkb
   USE gvecw,                  ONLY : gcutw
   USE lsda_mod,               ONLY : lsda, current_spin, isk
-  USE becmod,                 ONLY : calbec, becp, allocate_bec_type, deallocate_bec_type
-  USE constants,              ONLY : pi
-  USE gvect,                  ONLY : ngm, g
-  USE fft_base,               ONLY : dfftp, dffts
-  USE uspp,                   ONLY : vkb, okvan
-  USE lsda_mod,               ONLY : nspin
+  USE becmod,                 ONLY : becp, allocate_bec_type, deallocate_bec_type
   USE gipaw_module,           ONLY : tens_fmt, q_gipaw, iverbosity, alpha, evq, &
                                      avogadro, g_e, gprime, filcurr, filfield, filnics, &
                                      nbnd_occ, a0_to_cm, isolve, &
                                      conv_threshold, job, restart_mode
-  USE ions_base,              ONLY : nat
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm
-  USE mp_images,              ONLY : my_image_id, inter_image_comm, nimage
-  USE mp,                     ONLY : mp_sum, mp_barrier
+  USE mp,                     ONLY : mp_sum
 #ifdef __BANDS
   USE gipaw_module,           ONLY : ibnd_start, ibnd_end
   USE mp_bands,               ONLY : intra_bgrp_comm, inter_bgrp_comm
