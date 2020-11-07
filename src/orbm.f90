@@ -114,7 +114,7 @@ SUBROUTINE orbm
     do i = 1,3
        call apply_vel(evc, vel_evc(1,1,i), ik, i)
        aux(:,:) = vel_evc(:,:,i)
-       call greenfunction(ik, aux, evc1(1,1,i), q)
+       call greenfunction(ik, aux, evc1(1,1,i))
     enddo
     
     ! calculate orbital magnetization
