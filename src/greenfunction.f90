@@ -5,7 +5,7 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 !-----------------------------------------------------------------------
-SUBROUTINE greenfunction(ik, psi, g_psi, q)
+SUBROUTINE greenfunction(ik, psi, g_psi)
   !-----------------------------------------------------------------------
   !
   ! ... Apply the Green function operator
@@ -19,8 +19,7 @@ SUBROUTINE greenfunction(ik, psi, g_psi, q)
   USE io_global,                   ONLY : stdout  
   USE becmod,                      ONLY : bec_type, becp, calbec, &
                                           allocate_bec_type, deallocate_bec_type
-  USE wavefunctions,        ONLY : evc
-  USE noncollin_module,            ONLY : npol
+  USE wavefunctions,               ONLY : evc
   USE pwcom,                       ONLY : ef
   USE wvfct,                       ONLY : nbnd, et, npwx, g2kin
   USE gvect,                       ONLY : g
@@ -32,17 +31,15 @@ SUBROUTINE greenfunction(ik, psi, g_psi, q)
   USE buffers,                     ONLY : get_buffer
   USE cell_base,                   ONLY : tpiba
   USE klist,                       ONLY : lgauss, xk, degauss, ngauss, igk_k, ngk
+  USE noncollin_module,            ONLY : noncolin, npol
   USE gipaw_module
-#ifdef __BANDS
-  USE mp_bands,                    ONLY : intra_bgrp_comm
-#endif
 
   !-- parameters ---------------------------------------------------------
   IMPLICIT none
   INTEGER, INTENT(IN) :: ik
-  COMPLEX(DP), INTENT(INOUT) :: psi(npwx,nbnd)  ! psi is H1*psi and is changed on output!!!
-  COMPLEX(DP), INTENT(OUT) :: g_psi(npwx,nbnd)
-  REAL(DP) :: q(3)
+  COMPLEX(DP), INTENT(INOUT) :: psi(npwx*npol,nbnd)  ! psi is H1*psi and is changed on output!!!
+  COMPLEX(DP), INTENT(OUT) :: g_psi(npwx*npol,nbnd)
+
 
   !-- local variables ----------------------------------------------------
   real(dp), parameter :: ryd_to_hartree = 0.5d0
@@ -62,15 +59,8 @@ SUBROUTINE greenfunction(ik, psi, g_psi, q)
   npw = ngk(ik)
 
   ! allocate memory
-  allocate (work(npwx), ps(nbnd,nbnd), h_diag(npwx,nbnd), eprec(nbnd))
+  allocate (work(npwx*npol), ps(nbnd,nbnd), h_diag(npwx*npol,nbnd), eprec(nbnd))
   call allocate_bec_type(nkb, nbnd, becp)
-
-  ! check if |q| is zero
-  q_is_zero = .false.
-  if (sqrt(q(1)*q(1)+q(2)*q(2)+q(3)*q(3)) < 1d-8) q_is_zero = .true.  
-
-  ! evq is already calculated in compute_u_kq.f90
-  if (q_is_zero) evq(:,:) = evc(:,:)
 
   !====================================================================
   ! apply -Q_{k+q} to the r.h.s.
@@ -80,15 +70,14 @@ SUBROUTINE greenfunction(ik, psi, g_psi, q)
 
   if (lgauss) then
      ! metallic case
-#ifdef __BANDS
-     CALL zgemm('C', 'N', nbnd, ibnd_end-ibnd_start+1, npw, &
-                 (1.d0,0.d0), evq(1,1), npwx, psi(1,ibnd_start), npwx, (0.d0,0.d0), &
-                 ps(1,ibnd_start), nbnd)
-#else
-     CALL zgemm('C', 'N', nbnd, nbnd_occ (ik), npw, &
-                (1.d0,0.d0), evq(1,1), npwx, psi(1,1), npwx, (0.d0,0.d0), &
-                ps(1,1), nbnd)
-#endif   
+     if (noncolin) then
+         CALL zgemm('C', 'N', nbnd, nbnd_occ (ik), npwx*npol, (1.d0,0.d0), evc(1,1), &
+                     npwx*npol, psi(1,1), npwx*npol, (0.d0,0.d0), ps(1,1), nbnd)
+     else
+         CALL zgemm('C', 'N', nbnd, nbnd_occ (ik), npw, (1.d0,0.d0), evc(1,1), &
+                     npwx, psi(1,1), npwx, (0.d0,0.d0), ps(1,1), nbnd)
+     endif
+  
      do ibnd = 1, nbnd_occ(ik)
         wg1 = wgauss ((ef-et(ibnd,ik)) / degauss, ngauss)
         w0g = w0gauss((ef-et(ibnd,ik)) / degauss, ngauss) / degauss
@@ -107,75 +96,45 @@ SUBROUTINE greenfunction(ik, psi, g_psi, q)
            endif
            ps(jbnd,ibnd) = wwg * ps(jbnd,ibnd)
         enddo
-        call dscal(2*npw, wg1, psi(1,ibnd), 1)
+        call dscal(2*npwx*npol, wg1, psi(1,ibnd), 1)
      enddo
 
   else
      ! insulators
-#ifdef __BANDS
-     CALL zgemm('C', 'N', nbnd_occ (ik), ibnd_end-ibnd_start+1, npw, &
-                (1.d0,0.d0), evq(1,1), npwx, psi(1,ibnd_start), npwx, (0.d0,0.d0), &
-                ps(1,ibnd_start), nbnd)
-#else
-     CALL zgemm('C', 'N', nbnd_occ (ik), nbnd_occ (ik), npw, &
-                (1.d0,0.d0), evq(1,1), npwx, psi(1,1), npwx, (0.d0,0.d0), &
-                ps(1,1), nbnd)
-#endif   
+     if (noncolin) then
+     
+         CALL zgemm('C', 'N', nbnd_occ (ik), nbnd_occ (ik), npwx*npol, (1.d0,0.d0), evq(1,1), &
+                    npwx*npol, psi(1,1), npwx*npol, (0.d0,0.d0), ps(1,1), nbnd)
+     else
+         CALL zgemm('C', 'N', nbnd_occ (ik), nbnd_occ (ik), npw, (1.d0,0.d0), evq(1,1), &
+                    npwx, psi(1,1), npwx, (0.d0,0.d0), ps(1,1), nbnd)
+     endif
+ 
   endif
 
-#ifdef __MPI
-#ifdef __BANDS
-  call mp_sum(ps, intra_bgrp_comm)
-#else
-  call mp_sum(ps, intra_pool_comm)
-#endif
-#endif
 
-
-  ! this is the case with overlap (ultrasoft)
-  ! g_psi is used as work space to store S|evq>
-  ! |psi> = -(|psi> - S|evq><evq|psi>)
-#ifdef __BANDS
-  CALL calbec_bands (npwx, npw, nkb, vkb, evq, becp%k, nbnd_occ(ik), ibnd_start, ibnd_end)
-  CALL s_psi_bands (npwx, npw, nbnd_occ(ik), evq, g_psi, ibnd_start, ibnd_end)
-#else
-  CALL calbec (npw, vkb, evq, becp)
-  if (lgauss) then 
-     CALL s_psi (npwx, npw, nbnd, evq, g_psi)
-  else
-     CALL s_psi (npwx, npw, nbnd_occ(ik), evq, g_psi)
-  endif
-#endif
-
-#if defined(__MPI) && defined(__BANDS)
-  ! replicate wfc
-  call mp_sum(g_psi, inter_bgrp_comm)
-#endif
 
   if (lgauss) then
      ! metallic case
-#ifdef __BANDS
-     CALL zgemm( 'N', 'N', npw, ibnd_end-ibnd_start+1, nbnd, &
-          (1.d0,0.d0), g_psi(1,1), npwx, ps(1,ibnd_start), nbnd, (-1.d0,0.d0), &
-          psi(1,ibnd_start), npwx )
-#else
-     CALL zgemm( 'N', 'N', npw, nbnd_occ(ik), nbnd, &
-          (1.d0,0.d0), g_psi(1,1), npwx, ps(1,1), nbnd, (-1.d0,0.d0), &
-          psi(1,1), npwx )
-#endif
+     if (noncolin) then
+          CALL zgemm( 'N', 'N', npwx*npol, nbnd_occ(ik), nbnd, (1.d0,0.d0), &
+          g_psi(1,1), npwx*npol, ps(1,1), nbnd, (-1.d0,0.d0), psi(1,1), npwx*npol )
+     else
+          CALL zgemm( 'N', 'N', npw, nbnd_occ(ik), nbnd, (1.d0,0.d0), &
+          g_psi(1,1), npwx, ps(1,1), nbnd, (-1.d0,0.d0), psi(1,1), npwx )
+     endif
 
   else
      ! insulators
-#ifdef __BANDS
-     CALL zgemm( 'N', 'N', npw, ibnd_end-ibnd_start+1, nbnd_occ(ik), &
-          (1.d0,0.d0), g_psi(1,1), npwx, ps(1,ibnd_start), nbnd, (-1.d0,0.d0), &
-          psi(1,ibnd_start), npwx )
-#else
-     CALL zgemm( 'N', 'N', npw, nbnd_occ(ik), nbnd_occ(ik), &
-          (1.d0,0.d0), g_psi(1,1), npwx, ps(1,1), nbnd, (-1.d0,0.d0), &
-          psi(1,1), npwx )
-#endif
-endif
+     if (noncolin) then
+         CALL zgemm( 'N', 'N', npwx*npol, nbnd_occ(ik), nbnd_occ(ik), (1.d0,0.d0), &
+         g_psi(1,1), npwx*npol, ps(1,1), nbnd, (-1.d0,0.d0), psi(1,1), npwx*npol )
+     else
+         CALL zgemm( 'N', 'N', npw, nbnd_occ(ik), nbnd_occ(ik), (1.d0,0.d0), &
+         g_psi(1,1), npwx, ps(1,1), nbnd, (-1.d0,0.d0), psi(1,1), npwx )
+     endif
+
+  endif
 
   !! this is the old code for norm-conserving:
   !! |psi> = -(1 - |evq><evq|) |psi>
@@ -190,56 +149,39 @@ endif
   ! convergence treshold
   thresh = sqrt(conv_threshold)   ! sqrt(of that of PARATEC)
 
-  ! use the hamiltonian at k+q
+  ! use the hamiltonian at k
   do ig = 1, npw
-    gk(1) = (xk(1,ik) + g(1,igk_k(ig,ik)) + q(1)) * tpiba
-    gk(2) = (xk(2,ik) + g(2,igk_k(ig,ik)) + q(2)) * tpiba
-    gk(3) = (xk(3,ik) + g(3,igk_k(ig,ik)) + q(3)) * tpiba
+    gk(1) = (xk(1,ik) + g(1,igk_k(ig,ik)) ) * tpiba
+    gk(2) = (xk(2,ik) + g(2,igk_k(ig,ik)) ) * tpiba
+    gk(3) = (xk(3,ik) + g(3,igk_k(ig,ik)) ) * tpiba
     g2kin (ig) = gk(1)**2 + gk(2)**2 + gk(3)**2
   enddo
 
   ! preconditioning of the linear system
   work = (0.d0,0.d0)
-#ifdef __BANDS
-  do ibnd = ibnd_start, ibnd_end
-#else
+
   do ibnd = 1, nbnd
-#endif
-     do ig = 1, npw
-        work (ig) = g2kin (ig) * evq (ig, ibnd)
-     enddo
-     eprec (ibnd) = 1.35d0 * zdotc (npw, evq (1, ibnd), 1, work, 1)
+     work(1:npw) = g2kin(1:npw)*evc(1:npw, ibnd)
+     if (noncolin) then
+         work(npwx+1:npwx+npw) = g2kin(1:npw)*evc(npwx+1:npwx+npw,ibnd)
+     endif
+     eprec (ibnd) = 1.35d0 * zdotc (npwx*npol, evc (1, ibnd), 1, work, 1)
   enddo
-#ifdef __MPI
-#ifdef __BANDS
-  call mp_sum ( eprec, intra_bgrp_comm )
-#else
-  call mp_sum ( eprec, intra_pool_comm )
-#endif
-#endif
+
   h_diag = 0.d0
-#ifdef __BANDS
-  do ibnd = ibnd_start, ibnd_end
-#else
+
   do ibnd = 1, nbnd
-#endif
      do ig = 1, npw
         h_diag (ig, ibnd) = 1.d0 / max (1.0d0, g2kin (ig) / eprec (ibnd) )
+        if (noncolin) then
+           h_diag (ig+npwx, ibnd) = h_diag(ig, ibnd)
+        endif
      enddo
   enddo
 
-  if (.not. q_is_zero) then
-    dxk = xk(:,ik) + q
-    call init_us_2(npw, igk_k(1,ik), dxk, vkb)
-  else
-    call init_us_2(npw, igk_k(1,ik), xk(1,ik), vkb)
-  endif
 
-#ifdef __BANDS
-  call calbec_bands (npwx, npw, nkb, vkb, psi, becp%k, nbnd, ibnd_start, ibnd_end)
-#else
   call calbec (npw, vkb, psi, becp, nbnd)
-#endif
+
 
   ! initial guess
   g_psi(:,:) = (0.d0, 0.d0)
@@ -250,10 +192,6 @@ endif
        h_diag, npwx, npw, thresh, ik, lter, conv_root, anorm, &
        nbnd_occ(ik), npol )
 
-#if defined(__MPI) && defined(__BANDS)
-  ! replicate wfc
-  call mp_sum(g_psi, inter_bgrp_comm)
-#endif
 
   if (iverbosity > 20) &
     write(stdout, '(5X,''cgsolve_all iterations '',I3,4X,''anorm='',E12.2)')  lter, anorm
