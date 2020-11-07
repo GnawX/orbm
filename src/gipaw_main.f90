@@ -46,7 +46,6 @@ PROGRAM gipaw_main
   USE lsda_mod,        ONLY : nspin
   USE wvfct,           ONLY : nbnd
   USE uspp,            ONLY : okvan
-  !USE wvfct,           ONLY : nbnd
   USE io_global,       ONLY : stdout
   USE noncollin_module,ONLY : noncolin
   USE command_line_options, ONLY: input_file_, command_line, ndiag_
@@ -67,17 +66,11 @@ PROGRAM gipaw_main
   !------------------------------------------------------------------------
 
   ! begin with the initialization part
-#ifdef __MPI
-  call mp_startup(start_images=.true.)
-#else
-  call mp_startup(start_images=.false.)
-#endif
 
-#ifndef __BANDS
-  call mp_start_diag(ndiag_, world_comm, intra_pool_comm, do_distr_diag_inside_bgrp_=.false.)
-#else
+  call mp_startup(start_images=.false.)
+
   call mp_start_diag(ndiag_, world_comm, intra_pool_comm, do_distr_diag_inside_bgrp_=.true.)
-#endif
+
   call set_mpi_comm_4_solvers( intra_pool_comm, intra_bgrp_comm, inter_bgrp_comm)
 
   call environment_start (code)
@@ -86,10 +79,6 @@ PROGRAM gipaw_main
   if (meta_ionode) call plugin_arguments()
   call plugin_arguments_bcast( meta_ionode_id, world_comm )
 
-#ifndef __BANDS
-  if (nbgrp > 1) &
-    call errore('gipaw_main', 'configure and recompile GIPAW with --enable-band-parallel', 1)
-#endif
 
   write(stdout,*)
   write(stdout,'(5X,''***** This is GIPAW git revision '',A,'' *****'')') gipaw_git_revision
@@ -97,8 +86,6 @@ PROGRAM gipaw_main
   write(stdout,'(5X,''***** in publications or presentations arising from this work.            *****'')')
   write(stdout,*)
  
-  write(stdout,'(5X,''Parallelizing q-star over'',I2,'' images'')') nimage
-  if (nimage > 7) write(stdout,'(5X,''ATTENTION: optimal number of images is 7'')')
 
   call gipaw_readin()
   call check_stop_init( max_seconds )
@@ -116,11 +103,7 @@ PROGRAM gipaw_main
   call gipaw_openfil
 
   if (gamma_only) call errore ('gipaw_main', 'Cannot run GIPAW with gamma_only == .true. ', 1)
-#ifdef __BANDS
-  if (nbgrp > 1) &
-    call errore('gipaw_main', 'Cannot use band-parallelization without wf_collect in SCF', 1)
-#endif
-  if (noncolin) call errore('gipaw_main', 'non-collinear not supported yet', 1)
+  if (okvan) call errore('gipaw_main', 'USPP not supported yet', 1)
 
   nat_ = nat
   ntyp_ = ntyp
@@ -134,50 +117,10 @@ PROGRAM gipaw_main
   ! convert q_gipaw into units of tpiba
   q_gipaw = q_gipaw / tpiba
   
-  ! image initialization
-  if (nimage >= 1) then
-     write(dirname, fmt='(I5.5)') my_image_id
-     tmp_dir = trim(tmp_dir) // '/' // trim(dirname)
-     call create_directory(tmp_dir)
-  endif 
-
-#ifdef __BANDS
-  call init_parallel_over_band(inter_bgrp_comm, nbnd)
-#endif
 
   ! calculation
-  select case ( trim(job) )
-  case ( 'morb' )
-     if (okvan) call errore('gipaw_main', 'morb not available with ultrasoft', 1)
-     call orbm
   
-  case ( 'nmr' )
-     call suscept_crystal   
-     
-  case ( 'g_tensor' )
-     if (nspin /= 2) call errore('gipaw_main', 'g_tensor is only for spin-polarized', 1)
-     if (okvan) call errore('gipaw_main', 'g_tensor not available with ultrasoft', 1) 
-     call suscept_crystal
-
-  case ( 'knight' )
-     call knight_shift
-     
-  case ( 'f-sum' )
-     call suscept_crystal
-     
-  case ( 'efg' )
-     call efg
-
-  case ( 'mossbauer' )
-     call mossbauer
-     
-  case ( 'hyperfine' )
-     if (nspin /= 2) call errore('gipaw_main', 'hyperfine is only for spin-polarized', 1)
-     call hyperfine
-     
-  case default
-     call errore('gipaw_main', 'wrong or undefined job in input', 1)
-  end select
+  call orbm
   
   ! print timings and stop the code
   call gipaw_closefil
