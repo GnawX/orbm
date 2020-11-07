@@ -45,9 +45,9 @@ SUBROUTINE greenfunction(ik, psi, g_psi)
   real(dp), parameter :: ryd_to_hartree = 0.5d0
   complex(dp), allocatable :: ps(:,:), work (:)
   real(dp), allocatable :: h_diag (:,:), eprec (:)
-  real(dp) :: anorm, thresh, gk(3), dxk(3)
+  real(dp) :: anorm, thresh, gk(3)
   integer :: ibnd, jbnd, ig, lter
-  logical :: conv_root, q_is_zero
+  logical :: conv_root
   complex(dp), external :: zdotc
   real(dp), external :: wgauss, w0gauss
   real(dp) :: wg1, w0g, wgp, wwg, deltae, theta
