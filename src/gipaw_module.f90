@@ -39,10 +39,6 @@ MODULE gipaw_module
   
   ! alpha shift of the projector on the valence wfcs
   REAL(DP) :: alpha_pv
-  
-  ! eigenvalues and eigenfunctions at k+q
-  REAL(DP), ALLOCATABLE :: etq(:,:)
-  COMPLEX(DP), ALLOCATABLE :: evq(:,:)
 
   ! convergence threshold for diagonalizationa and greenfunction
   REAL(DP) :: conv_threshold
@@ -50,8 +46,6 @@ MODULE gipaw_module
   ! q for the perturbation (in bohrradius^{-1})
   REAL(DP) :: q_gipaw
   
-  ! q for the EFG
-  REAL(DP) :: q_efg ( ntypx )
 
   ! restart mode: 'from_scratch' or 'restart'
   CHARACTER(80) :: restart_mode
@@ -74,41 +68,7 @@ MODULE gipaw_module
   ! format for a rank-2 tensor
   CHARACTER(*), PARAMETER :: tens_fmt = '(3(5X,3(F14.4,2X)/))'
   
-  ! for plotting the induced current and induced field
-  CHARACTER(80) :: filcurr, filfield, filnics
 
-  ! macroscopic shape for the NMR
-  LOGICAL :: use_nmr_macroscopic_shape
-  REAL(DP) :: nmr_macroscopic_shape(3,3)
-
-  ! contribution to NMR chemical shift due to core contribution
-  REAL(dp) :: nmr_shift_core(ntypx)
-  
-  ! parametres for hyper-fine interaction
-  CHARACTER(10) :: hfi_input_unit
-  CHARACTER(10) :: hfi_output_unit
-  REAL(dp) :: hfi_nuclear_g_factor(ntypx)
-  LOGICAL :: hfi_via_reconstruction_only = .false. !UWG: speed up for large systems 
-
-  
-  REAL(dp) :: rc(ntypx,0:lmaxx)
-  COMPLEX(dp), ALLOCATABLE :: paw_becp2(:,:), paw_becp3(:,:)
-  REAL(dp), ALLOCATABLE, DIMENSION (:,:) :: lx, ly, lz
-  REAL(dp), ALLOCATABLE :: radial_integral_paramagnetic(:,:,:)
-  REAL(dp), ALLOCATABLE :: radial_integral_diamagnetic(:,:,:)
-  REAL(dp), ALLOCATABLE :: radial_integral_paramagnetic_so(:,:,:)
-  REAL(dp), ALLOCATABLE :: radial_integral_diamagnetic_so(:,:,:)
-  REAL(dp), ALLOCATABLE :: radial_integral_rmc(:,:,:)
-
-  LOGICAL :: pawproj( ntypx ) ! EMINE: if true paw projectors will be used instead of GIPAW ones
-  REAL(dp) :: r_rand ! EMINE: determines the randimization range used in
-                     ! compute_u_kq routine. read from input. change it for debugging only
-
-  INTEGER, PARAMETER :: iumagres = 57
-
-#ifdef __BANDS
-  INTEGER :: ibnd_start, ibnd_end
-#endif
 !-----------------------------------------------------------------------
 END MODULE gipaw_module
 !-----------------------------------------------------------------------
