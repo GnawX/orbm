@@ -43,10 +43,7 @@ SUBROUTINE orbm
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm
   USE mp,                     ONLY : mp_sum
-#ifdef __BANDS
-  USE gipaw_module,           ONLY : ibnd_start, ibnd_end
-  USE mp_bands,               ONLY : intra_bgrp_comm, inter_bgrp_comm
-#endif
+
   !-- local variables ----------------------------------------------------
   IMPLICIT NONE
 
@@ -91,7 +88,6 @@ SUBROUTINE orbm
   !====================================================================
   ! loop over k-points on the pool
   !====================================================================
-  q(:) = 0.d0
   do ik = 1, nks
 
 #ifdef __MPI
@@ -116,18 +112,14 @@ SUBROUTINE orbm
     ! calculate du/dk    
     vel_evc(:,:,:) = (0.d0,0.d0)
     do i = 1,3
-       call apply_vel(evc, vel_evc(1,1,i), ik, i, q)
+       call apply_vel(evc, vel_evc(1,1,i), ik, i)
        aux(:,:) = vel_evc(:,:,i)
        call greenfunction(ik, aux, evc1(1,1,i), q)
     enddo
     
     ! calculate orbital magnetization
     ! loop over the bands
-#ifdef __BANDS
-    do ibnd = ibnd_start, ibnd_end
-#else
     do ibnd = 1, nbnd_occ(ik)
-#endif
        do i = 1,3
           ii = ind(1, i)
           jj = ind(2, i)
@@ -148,21 +140,10 @@ SUBROUTINE orbm
   enddo ! ik
     
 #ifdef __MPI
-#ifdef __BANDS
-  ! reduce over G-vectors
-  call mp_sum( mlc, intra_bgrp_comm )
-  call mp_sum( mic, intra_bgrp_comm )
-  call mp_sum( berry, intra_bgrp_comm )
-  ! reduce over band groups
-  call mp_sum( mlc, inter_bgrp_comm )
-  call mp_sum( mic, inter_bgrp_comm )
-  call mp_sum( berry, inter_bgrp_comm )
-#else
   ! reduce over G-vectors
   call mp_sum( mlc, intra_pool_comm )
   call mp_sum( mic, intra_pool_comm )
   call mp_sum( berry, intra_pool_comm )
-#endif
   ! reduce over k-point pools
   call mp_sum( mlc, inter_pool_comm )
   call mp_sum( mic, inter_pool_comm )
