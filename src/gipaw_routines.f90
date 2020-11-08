@@ -26,12 +26,10 @@ SUBROUTINE gipaw_readin()
   character(len=256), external :: trimcheck
   character(len=80) :: diagonalization, verbosity
   namelist /inputgipaw/ job, prefix, tmp_dir, conv_threshold, restart_mode, &
-                        q_gipaw, iverbosity, filcurr, filfield, filnics, pawproj, &
-                        use_nmr_macroscopic_shape, nmr_macroscopic_shape, &
-                        spline_ps, isolve, q_efg, max_seconds, r_rand, &
-                        hfi_output_unit, hfi_nuclear_g_factor, &
-                        core_relax_method, diagonalization, verbosity, &
-                        hfi_via_reconstruction_only
+                        q_gipaw, iverbosity,  &
+                        spline_ps, isolve, max_seconds, &
+                        diagonalization, verbosity
+                        
 
   if (.not. ionode .or. my_image_id > 0) goto 400
     
@@ -48,25 +46,9 @@ SUBROUTINE gipaw_readin()
   q_gipaw = 0.01d0
   iverbosity = -1
   verbosity = 'low'
-  filcurr = ''
-  filfield = ''
-  filnics = ''
-  use_nmr_macroscopic_shape = .true.
-  nmr_macroscopic_shape(:,:) = 0.d0
-  nmr_macroscopic_shape(1,1) = 2.d0 / 3.d0
-  nmr_macroscopic_shape(2,2) = 2.d0 / 3.d0
-  nmr_macroscopic_shape(3,3) = 2.d0 / 3.d0
   spline_ps = .true.
   isolve = -1
   diagonalization = 'david'
-  core_relax_method = 1
-  hfi_via_reconstruction_only = .false.
-
-  hfi_output_unit = 'MHz'
-  hfi_nuclear_g_factor(:) = 1.0
-  q_efg(:)  = 1.0
-  pawproj(:) = .false.
-  r_rand = 0.1
   max_seconds  =  1.d7
 
   ! read input    
@@ -137,20 +119,8 @@ SUBROUTINE gipaw_bcast_input
   call mp_bcast(conv_threshold, root, world_comm)
   call mp_bcast(q_gipaw, root, world_comm)
   call mp_bcast(iverbosity, root, world_comm)
-  call mp_bcast(filcurr, root, world_comm)
-  call mp_bcast(filfield, root, world_comm)
-  call mp_bcast(filnics, root, world_comm)
-  call mp_bcast(use_nmr_macroscopic_shape, root, world_comm)
-  call mp_bcast(nmr_macroscopic_shape, root, world_comm)
   call mp_bcast(spline_ps, root, world_comm)
   call mp_bcast(isolve, root, world_comm)
-  call mp_bcast(core_relax_method, root, world_comm)
-  call mp_bcast(hfi_via_reconstruction_only, root, world_comm)
-  call mp_bcast(hfi_output_unit, root, world_comm)
-  call mp_bcast(hfi_nuclear_g_factor, root, world_comm)
-  call mp_bcast(q_efg, root, world_comm)
-  call mp_bcast(pawproj, root, world_comm)
-  call mp_bcast(r_rand, root, world_comm)
   call mp_bcast(max_seconds, root, world_comm)
   call mp_bcast(restart_mode, root, world_comm)
 
@@ -173,13 +143,13 @@ SUBROUTINE gipaw_allocate
   implicit none
   
   ! wavefunction at k+q  
-  allocate(evq(npwx,nbnd))
+  !allocate(evq(npwx,nbnd))
 
   ! eigenvalues
-  allocate(etq(nbnd,nkstot))
+  !allocate(etq(nbnd,nkstot))
 
   ! GIPAW projectors
-  if (.not. allocated(paw_recon)) allocate(paw_recon(ntyp))
+  !if (.not. allocated(paw_recon)) allocate(paw_recon(ntyp))
     
 END SUBROUTINE gipaw_allocate
   
@@ -208,21 +178,9 @@ SUBROUTINE gipaw_summary
   write(stdout,"(5X,'q-space interpolation up to ',F8.2,' Rydberg')") ecutwfc*cell_factor
   write(stdout,*)
   
-  write(stdout,'(5X,''GIPAW job: '',A)') job
-  if (job(1:3) == 'nmr') then
-    if (use_nmr_macroscopic_shape) then
-      write(stdout,'(5X,''NMR macroscopic correction: yes'')')
-      write(stdout,tens_fmt) nmr_macroscopic_shape
-    else
-      write(stdout,'(5X,''NMR macroscopic correction: no'')')
-    endif
-  endif
-
-  if (lda_plus_U .eqv. .true.) call write_ns
 
   write(stdout,*)
 
-  call plugin_summary
 
   flush(stdout)
 
@@ -284,23 +242,10 @@ SUBROUTINE print_clock_gipaw
   call print_clock ('greenf')
   call print_clock ('cgsolve')
   call print_clock ('ch_psi')
-  call print_clock ('h_psiq')
-  call print_clock ('u_kq')
   write(stdout,*)
   write(stdout,*) '    Apply operators'
   call print_clock ('h_psi')
   call print_clock ('apply_vel')
-  write(stdout,*)
-  write(stdout,*) '    Induced current'
-  call print_clock ('j_para')
-  call print_clock ('biot_savart')
-  call print_clock ('c_sigma')
-  write(stdout,*)
-  write(stdout,*) '    Other routines'
-  call print_clock ('f-sum')
-  call print_clock ('efg')
-  call print_clock ('hyperfine')
-  call print_clock ('core_relax')
   write(stdout,*)
   write(stdout,*) '    General routines'
   call print_clock ('calbec')
@@ -320,9 +265,6 @@ SUBROUTINE print_clock_gipaw
   write(stdout,*)
 #endif
 
-  write(stdout,*) '    Plugins'
-  call plugin_clock()
-  write(stdout,*)
 
 END SUBROUTINE print_clock_gipaw
 
@@ -357,10 +299,6 @@ SUBROUTINE gipaw_memory_report
 
   write(stdout,'(8x,"Charge/spin density       ",f10.2," Mb",5x,"(",i8,",",i5,")")') &
      real_size*dble(dffts%nnr)*nspin/Mb, dffts%nnr, nspin
-  write(stdout,'(8x,"Induced current           ",f10.2," Mb",5x,"(",i8,",",i5,",",i1,",",i1")")') &
-     real_size*dble(dffts%nnr)*9*nspin/Mb, dffts%nnr,3,3,nspin
-  write(stdout,'(8x,"Induced magnetic field    ",f10.2," Mb",5x,"(",i8,",",i5,",",i1,",",i1")")') &
-     real_size*dble(dffts%nnr)*9*nspin/Mb, dffts%nnr,3,3,nspin
   
   write(stdout,'(8x,"NL pseudopotentials       ",f10.2," Mb",5x,"(",i8,",",i5,")")') &
      complex_size*nkb*DBLE(npwx)/Mb, npwx, nkb
