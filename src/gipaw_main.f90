@@ -28,7 +28,6 @@ PROGRAM gipaw_main
   ! ...
   USE kinds,           ONLY : DP
   USE io_files,        ONLY : tmp_dir, create_directory
-  USE io_global,       ONLY : stdout, meta_ionode, meta_ionode_id
   USE mp,              ONLY : mp_bcast
   USE cell_base,       ONLY : tpiba
   USE gipaw_module,    ONLY : job, q_gipaw, max_seconds
@@ -68,16 +67,15 @@ PROGRAM gipaw_main
   ! begin with the initialization part
 
   call mp_startup(start_images=.false.)
-
+  
+  ! no band parallelization
+  
   call mp_start_diag(ndiag_, world_comm, intra_pool_comm, do_distr_diag_inside_bgrp_=.true.)
 
   call set_mpi_comm_4_solvers( intra_pool_comm, intra_bgrp_comm, inter_bgrp_comm)
 
   call environment_start (code)
 
-  ! read plugin command line arguments, if any
-  if (meta_ionode) call plugin_arguments()
-  call plugin_arguments_bcast( meta_ionode_id, world_comm )
 
 
   write(stdout,*)
@@ -109,7 +107,7 @@ PROGRAM gipaw_main
   ntyp_ = ntyp
   ibrav_ = ibrav
   assume_isolated_ = 'none'
-  call plugin_read_input()
+
   call gipaw_allocate()
   call gipaw_setup()
   call gipaw_summary()
