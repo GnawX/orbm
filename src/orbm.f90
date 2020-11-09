@@ -38,7 +38,7 @@ SUBROUTINE orbm
   USE gipaw_module,           ONLY : tens_fmt, q_gipaw, iverbosity, alpha, evq, &
                                      avogadro, g_e, gprime, filcurr, filfield, filnics, &
                                      nbnd_occ, a0_to_cm, isolve, &
-                                     conv_threshold, job, restart_mode
+                                     conv_threshold, job, restart_mode, ry2ha
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm
@@ -150,7 +150,8 @@ SUBROUTINE orbm
   call mp_sum( berry, inter_pool_comm )
 #endif
     
-  morb = mlc + mic - 2.d0*ef*berry
+  morb = (mlc + mic - 2.d0*ef*berry)*ry2ha ! Hatree AU
+  ! in AU, Bohr magnetron is 1/2
 
   
   
