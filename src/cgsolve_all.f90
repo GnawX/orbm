@@ -10,7 +10,7 @@
 
 #ifdef USE_NEW_ROUTINE
 !----------------------------------------------------------------------
-SUBROUTINE cgsolve_all(h_psi, cg_psi, e, d0psi, dpsi, h_diag, ndmx, ndim, &
+SUBROUTINE cgsolve_all(ch_psi, cg_psi, e, d0psi, dpsi, h_diag, ndmx, ndim, &
                        ethr, ik, kter, conv_root, anorm, nbnd, npol)
   !----------------------------------------------------------------------
   !
@@ -78,7 +78,7 @@ SUBROUTINE cgsolve_all(h_psi, cg_psi, e, d0psi, dpsi, h_diag, ndmx, ndim, &
   complex(dp) :: dpsi (ndmx*npol, nbnd), & ! output: the solution of the linear syst
                  d0psi (ndmx*npol, nbnd)   ! input: the known term
   logical :: conv_root    ! output: if true the root is converged
-  external h_psi          ! input: the routine computing h_psi
+  external ch_psi          ! input: the routine computing h_psi
   external cg_psi         ! input: the routine computing cg_psi
 
   !-- local variabbles ------------------------------------------------
@@ -118,7 +118,7 @@ SUBROUTINE cgsolve_all(h_psi, cg_psi, e, d0psi, dpsi, h_diag, ndmx, ndim, &
   do iter = 1, maxter
      ! compute the gradient. can reuse information from previous step
      if (iter == 1) then
-        call h_psi (ndim, dpsi, g, e, ik, nbnd)
+        call ch_psi (ndim, dpsi, g, e, ik, nbnd)
         do ibnd = 1, nbnd
            call zaxpy(ndim, (-1.d0,0.d0), d0psi(1,ibnd), 1, g(1,ibnd), 1)
         enddo
@@ -171,7 +171,7 @@ SUBROUTINE cgsolve_all(h_psi, cg_psi, e, d0psi, dpsi, h_diag, ndmx, ndim, &
 
      ! compute t = A*h
 
-     call h_psi (ndim, hold, t, eu, ik, nbnd)
+     call ch_psi (ndim, hold, t, eu, ik, nbnd)
 
 
      ! compute the coefficients a and c for the line minimization
@@ -228,7 +228,7 @@ END SUBROUTINE cgsolve_all
 ! converged bands (DC, Oct 2013)
 !
 !----------------------------------------------------------------------
-subroutine cgsolve_all (h_psi, cg_psi, e, d0psi, dpsi, h_diag, &
+subroutine cgsolve_all (ch_psi, cg_psi, e, d0psi, dpsi, h_diag, &
      ndmx, ndim, ethr, ik, kter, conv_root, anorm, nbnd, npol)
   !----------------------------------------------------------------------
   !
@@ -302,7 +302,7 @@ subroutine cgsolve_all (h_psi, cg_psi, e, d0psi, dpsi, h_diag, &
              d0psi (ndmx*npol, nbnd)   ! input: the known term
 
   logical :: conv_root ! output: if true the root is converged
-  external h_psi       ! input: the routine computing h_psi
+  external ch_psi       ! input: the routine computing h_psi
   external cg_psi      ! input: the routine computing cg_psi
   !
   !  here the local variables
@@ -354,7 +354,7 @@ subroutine cgsolve_all (h_psi, cg_psi, e, d0psi, dpsi, h_diag, &
      !    compute the gradient. can reuse information from previous step
      !
      if (iter == 1) then
-        call h_psi (ndim, dpsi, g, e, ik, nbnd)
+        call ch_psi (ndim, dpsi, g, e, ik, nbnd)
         do ibnd = 1, nbnd
            call zaxpy (ndim, (-1.d0,0.d0), d0psi(1,ibnd), 1, g(1,ibnd), 1)
         enddo
@@ -429,7 +429,7 @@ subroutine cgsolve_all (h_psi, cg_psi, e, d0psi, dpsi, h_diag, &
      !
      !        compute t = A*h
      !
-     call h_psi (ndim, hold, t, eu, ik, lbnd)
+     call ch_psi (ndim, hold, t, eu, ik, lbnd)
      !
      !        compute the coefficients a and c for the line minimization
      !        compute step length lambda
