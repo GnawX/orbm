@@ -27,8 +27,7 @@ SUBROUTINE optic_readin()
   character(len=80) :: diagonalization, verbosity
   namelist /inputopitc/ job, prefix, tmp_dir, conv_threshold, restart_mode, &
                         q_gipaw, iverbosity,  &
-                        spline_ps, isolve, max_seconds, &
-                        diagonalization, verbosity
+                        spline_ps, isolve, max_seconds, verbosity
                         
 
   if (.not. ionode .or. my_image_id > 0) goto 400
@@ -48,34 +47,19 @@ SUBROUTINE optic_readin()
   verbosity = 'low'
   spline_ps = .true.
   isolve = -1
-  diagonalization = 'david'
   max_seconds  =  1.d7
 
   ! read input    
-  read( 5, inputgipaw, err = 200, iostat = ios )
+  read( 5, inputoptic, err = 200, iostat = ios )
 
   ! check input
-  if (max_seconds < 0.1d0) call errore ('gipaw_readin', ' wrong max_seconds', 1)
-200 call errore('gipaw_readin', 'reading inputgipaw namelist', abs(ios))
+  if (max_seconds < 0.1d0) call errore ('optic_readin', ' wrong max_seconds', 1)
+200 call errore('optic_readin', 'reading inputoptic namelist', abs(ios))
 
   ! further checks
-  if (isolve /= -1) &
-     call errore('gipaw_readin', '*** isolve is obsolete, use diagonalization instead ***', 1)
   if (iverbosity /= -1) &
-     call errore('gipaw_readin', '*** iverbosity is obsolete, use verbosity instead ***', 1)
+     call errore('optic_readin', '*** iverbosity is obsolete, use verbosity instead ***', 1)
 
-  select case (diagonalization)
-     case('david')
-       isolve = 0
-     case('cg')
-       isolve = 1
-     !!case('ppcg')
-     !!  isolve = 2
-     !!case('rmm-diis')
-     !!  isolve = 3
-     case default
-       call errore('gipaw_readin', 'diagonalization can be ''david'', ''cg'' or ''ppcg''', 1)
-  end select
 
   select case (verbosity)
      case('low')
@@ -85,7 +69,7 @@ SUBROUTINE optic_readin()
      case('high')
        iverbosity = 21
      case default
-       call errore('gipaw_readin', 'verbosity can be ''low'', ''medium'' or ''high''', 1)
+       call errore('optic_readin', 'verbosity can be ''low'', ''medium'' or ''high''', 1)
   end select
 400 continue
 
@@ -166,7 +150,7 @@ SUBROUTINE optic_summary
 
   if (.not. spline_ps) then
       write(stdout,*)
-      call infomsg('gipaw_summary', 'spline_ps is .false., expect some extrapolation errors')
+      call infomsg('optic_summary', 'spline_ps is .false., expect some extrapolation errors')
   endif
 
   write(stdout,*)
