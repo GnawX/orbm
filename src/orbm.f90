@@ -35,10 +35,8 @@ SUBROUTINE orbm
   USE gvecw,                  ONLY : gcutw
   USE lsda_mod,               ONLY : lsda, current_spin, isk
   USE becmod,                 ONLY : becp, allocate_bec_type, deallocate_bec_type
-  USE gipaw_module,           ONLY : tens_fmt, q_gipaw, iverbosity, alpha, evq, &
-                                     avogadro, g_e, gprime, filcurr, filfield, filnics, &
-                                     nbnd_occ, a0_to_cm, isolve, &
-                                     conv_threshold, job, restart_mode, ry2ha
+  USE optic_module,           ONLY : q_gipaw, iverbosity, alpha, &
+                                     nbnd_occ, conv_threshold, restart_mode, ry2ha
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm
@@ -79,10 +77,10 @@ SUBROUTINE orbm
   call allocate_bec_type(nkb, nbnd, becp)
 
   ! print memory estimate
-  call gipaw_memory_report
+  call optic_memory_report
 
   write(stdout, '(5X,''Computing the orbital magnetization'',$)')
-  write(stdout, '(5X,''isolve='',I1,4X,''ethr='',E12.4)') isolve, conv_threshold
+  write(stdout, '(5X,''ethr='',E12.4)') conv_threshold
 
 
   !====================================================================
@@ -93,10 +91,10 @@ SUBROUTINE orbm
 #ifdef __MPI
     if (me_pool == root_pool) &
     write(*, '(5X,''k-point #'',I5,'' of '',I5,6X,''pool #'',I3,4X,''cpu time:'',F10.1)') &
-      ik, nks, my_pool_id+1, get_clock('GIPAW')
+      ik, nks, my_pool_id+1, get_clock('optic')
 #else
     write(stdout, '(5X,''k-point #'',I5,'' of '',I5,4X,''cpu time:'',F10.1)') &
-      ik, nks, get_clock('GIPAW')
+      ik, nks, get_clock('optic')
 #endif
 
     ! read wfcs from file and compute becp
