@@ -7,7 +7,7 @@
 !
 
 !-----------------------------------------------------------------------
-SUBROUTINE setup
+SUBROUTINE optic_setup
   !-----------------------------------------------------------------------
   !
   ! ... GIPAW setup
@@ -27,7 +27,7 @@ SUBROUTINE setup
   USE dfunct,        ONLY : newd
   USE pwcom,         ONLY : ef
   USE constants,     ONLY : rytoev
-  USE gipaw_module
+  USE optic_module
   USE ions_base, only: tau, ityp
 
   implicit none
@@ -35,7 +35,7 @@ SUBROUTINE setup
   real(dp) :: emin, emax, xmax, small, fac, target
     
 
-  call start_clock ('gipaw_setup')
+  call start_clock ('optic_setup')
     
 
   ! TODO: test whether the symmetry operations map the Cartesian axis to each
@@ -65,10 +65,10 @@ SUBROUTINE setup
   !!call setup_dgc
 
   ! some pre-conditions
-  if (ltetra) call errore('gipaw_setup','GIPAW + tetrahedra not implemented', 1)
+  if (ltetra) call errore('optic_setup','optic + tetrahedra not implemented', 1)
 
   if (two_fermi_energies .and. lgauss) &
-     call errore('gipaw_setup','GIPAW + two Fermi energies not implemented', 1)
+     call errore('optic_setup','optic + two Fermi energies not implemented', 1)
 
   ! computes the number of occupied bands for each k point
   nbnd_occ (:) = 0
@@ -155,8 +155,8 @@ SUBROUTINE setup
      write(stdout,*)
   endif
 
-  call stop_clock('gipaw_setup')
+  call stop_clock('optic_setup')
     
-END SUBROUTINE setup
+END SUBROUTINE optic_setup
 
 
