@@ -6,7 +6,7 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 !-----------------------------------------------------------------------
-MODULE gipaw_module
+MODULE optic_module
   !-----------------------------------------------------------------------
   !
   ! ... This module contains the variables used for GIPAW calculations
@@ -61,14 +61,10 @@ MODULE gipaw_module
  
   ! job: nmr, g_tensor, efg, hyperfine
   CHARACTER(80) :: job
+
  
-  ! core-relax method to calculate change of XC
-  INTEGER :: core_relax_method = 1
- 
-  ! format for a rank-2 tensor
-  CHARACTER(*), PARAMETER :: tens_fmt = '(3(5X,3(F14.4,2X)/))'
   
 
 !-----------------------------------------------------------------------
-END MODULE gipaw_module
+END MODULE optic_module
 !-----------------------------------------------------------------------
