@@ -62,10 +62,7 @@ SUBROUTINE cgsolve_all(h_psi, cg_psi, e, d0psi, dpsi, h_diag, ndmx, ndim, &
   USE kinds,          ONLY: dp
   USE mp_pools,       ONLY: intra_pool_comm, me_pool
   USE mp,             ONLY: mp_sum
-#ifdef __BANDS
-  USE mp_bands,       ONLY: intra_bgrp_comm, inter_bgrp_comm, me_bgrp
-  USE gipaw_module,   ONLY: ibnd_start, ibnd_end
-#endif
+
   !-- parameters ------------------------------------------------------
   implicit none
   integer :: ndmx, &      ! input: the maximum dimension of the vectors
@@ -97,11 +94,7 @@ SUBROUTINE cgsolve_all(h_psi, cg_psi, e, d0psi, dpsi, h_diag, ndmx, ndim, &
   real(dp), allocatable :: rho(:), rhoold(:), eu(:), a(:), c(:)
   real(dp) :: kter_eff
   complex(dp), external :: zdotc 
-#ifndef __BANDS
-  integer :: ibnd_start, ibnd_end
-  ibnd_start = 1
-  ibnd_end = nbnd
-#endif
+
 
   call start_clock ('cgsolve')
 
@@ -125,51 +118,43 @@ SUBROUTINE cgsolve_all(h_psi, cg_psi, e, d0psi, dpsi, h_diag, ndmx, ndim, &
   do iter = 1, maxter
      ! compute the gradient. can reuse information from previous step
      if (iter == 1) then
-#ifdef __BANDS
-        call h_psi (ndim, dpsi, g, e, ik, nbnd, ibnd_start, ibnd_end)
-#else
         call h_psi (ndim, dpsi, g, e, ik, nbnd)
-#endif
-        do ibnd = ibnd_start, ibnd_end
+        do ibnd = 1, nbnd
            call zaxpy(ndim, (-1.d0,0.d0), d0psi(1,ibnd), 1, g(1,ibnd), 1)
         enddo
 
         if (npol == 2) then
-           do ibnd = ibnd_start, ibnd_end
+           do ibnd = 1, nbnd
               call zaxpy(ndim, (-1.d0,0.d0), d0psi(ndmx+1,ibnd), 1, g(ndmx+1,ibnd), 1)
            enddo
         END IF
      endif
 
      ! compute preconditioned residual vector and convergence check
-     do ibnd = ibnd_start, ibnd_end
+     do ibnd = 1, nbnd
         call zcopy (ndmx*npol, g (1, ibnd), 1, h (1, ibnd), 1)
         call cg_psi(ndmx, ndim, 1, h(1,ibnd), h_diag(1,ibnd) )
         rho(ibnd) = zdotc(ndmx*npol, h(1,ibnd), 1, g(1,ibnd), 1)
      enddo
-     kter_eff = kter_eff + DBLE (ibnd_end-ibnd_start+1) / DBLE (nbnd)
+     kter_eff = kter_eff + DBLE (nbnd) / DBLE (nbnd)
 
 #ifdef __MPI
-#  ifdef __BANDS
-     call mp_sum(rho(ibnd_start:ibnd_end), intra_bgrp_comm)
-#  else
      call mp_sum(rho(1:nbnd) , intra_pool_comm)
-#  endif
 #endif
 
      conv_root = .true.
      anorm = 0.d0
-     do ibnd = ibnd_start, ibnd_end
+     do ibnd = 1, nbnd
         if (conv(ibnd) == 0) then
            if (sqrt(rho(ibnd)) < ethr) conv(ibnd) = 1
         endif
         conv_root = conv_root .and. (conv(ibnd) == 1)
-        anorm = anorm + sqrt(rho(ibnd)) / dble(ibnd_end-ibnd_start+1)
+        anorm = anorm + sqrt(rho(ibnd)) / dble(nbnd)
      enddo
      if (conv_root) goto 100
 
      ! compute the step direction h, conjugate it to previous step
-     do ibnd = ibnd_start, ibnd_end
+     do ibnd = 1, nbnd
         if (conv(ibnd) == 0) then
            ! change sign to h 
            call dscal(2*ndmx*npol, -1.d0, h(1,ibnd), 1)
@@ -185,15 +170,13 @@ SUBROUTINE cgsolve_all(h_psi, cg_psi, e, d0psi, dpsi, h_diag, ndmx, ndim, &
      enddo
 
      ! compute t = A*h
-#ifdef __BANDS
-     call h_psi (ndim, hold, t, eu, ik, nbnd, ibnd_start, ibnd_end)
-#else
+
      call h_psi (ndim, hold, t, eu, ik, nbnd)
-#endif
+
 
      ! compute the coefficients a and c for the line minimization
      ! compute step length lambda
-     do ibnd = ibnd_start, ibnd_end
+     do ibnd = 1, nbnd
         if (conv(ibnd) == 0) then
            a(ibnd) = zdotc(ndmx*npol, h(1,ibnd), 1, g(1,ibnd), 1)
            c(ibnd) = zdotc(ndmx*npol, h(1,ibnd), 1, t(1,ibnd), 1)
@@ -201,16 +184,11 @@ SUBROUTINE cgsolve_all(h_psi, cg_psi, e, d0psi, dpsi, h_diag, ndmx, ndim, &
      enddo
 
 #ifdef __MPI
-#  ifdef __BANDS
-     call mp_sum(a(ibnd_start:lbnd), intra_bgrp_comm)
-     call mp_sum(c(ibnd_start:lbnd), intra_bgrp_comm)
-#  else
      call mp_sum(a(1:nbnd), intra_pool_comm)
      call mp_sum(c(1:nbnd), intra_pool_comm)
-#  endif
 #endif
 
-     do ibnd = ibnd_start, ibnd_end
+     do ibnd = 1, nbnd
         if (conv(ibnd) ==.0) then
            dclambda = cmplx(-a(ibnd)/c(ibnd), 0.d0, kind=dp)
            ! move to new position
@@ -228,20 +206,12 @@ SUBROUTINE cgsolve_all(h_psi, cg_psi, e, d0psi, dpsi, h_diag, ndmx, ndim, &
   !--------------------------------------------------------------------
 100 continue
 
-#ifdef __BANDS
-   do ibnd = ibnd_start, ibnd_end
-     if (conv(ibnd) == 0 .and. me_bgrp == 0) &
-#else
    do ibnd = 1, nbnd
      if (conv(ibnd) == 0 .and. me_pool == 0) &
-#endif
        write(*,'(5x,"ik",i4," ibnd",i4,4x,"cgsolve_all: root not converged")') ik, ibnd
    enddo
 
-#ifdef __BANDS
-  call mp_sum(kter_eff, inter_bgrp_comm)
-  call mp_sum(anorm, inter_bgrp_comm)
-#endif
+
   kter = kter_eff
 
   deallocate (eu, rho, rhoold, conv, a, c, g, t, h, hold)
@@ -309,10 +279,6 @@ subroutine cgsolve_all (h_psi, cg_psi, e, d0psi, dpsi, h_diag, &
   USE kinds, only : DP
   USE mp_pools,  ONLY: intra_pool_comm, me_pool
   USE mp,        ONLY: mp_sum
-#ifdef __BANDS
-  USE mp_bands,  ONLY: intra_bgrp_comm, inter_bgrp_comm, me_bgrp
-  USE gipaw_module, ONLY: ibnd_start, ibnd_end
-#endif
 
   implicit none
   !
@@ -388,21 +354,12 @@ subroutine cgsolve_all (h_psi, cg_psi, e, d0psi, dpsi, h_diag, &
      !    compute the gradient. can reuse information from previous step
      !
      if (iter == 1) then
-#ifdef __BANDS
-        call h_psi (ndim, dpsi, g, e, ik, nbnd, ibnd_start, ibnd_end)
-        do ibnd = ibnd_start, ibnd_end
-#else
         call h_psi (ndim, dpsi, g, e, ik, nbnd)
         do ibnd = 1, nbnd
-#endif
            call zaxpy (ndim, (-1.d0,0.d0), d0psi(1,ibnd), 1, g(1,ibnd), 1)
         enddo
         IF (npol==2) THEN
-#ifdef __BANDS
-           do ibnd = ibnd_start, ibnd_end
-#else
            do ibnd = 1, nbnd
-#endif
               call zaxpy (ndim, (-1.d0,0.d0), d0psi(ndmx+1,ibnd), 1, &
                                               g(ndmx+1,ibnd), 1)
            enddo
@@ -411,13 +368,8 @@ subroutine cgsolve_all (h_psi, cg_psi, e, d0psi, dpsi, h_diag, &
      !
      !    compute preconditioned residual vector and convergence check
      !
-#ifdef __BANDS
-     lbnd = ibnd_start - 1
-     do ibnd = ibnd_start, ibnd_end
-#else
      lbnd = 0
      do ibnd = 1, nbnd
-#endif
         if (conv (ibnd) .eq.0) then
            lbnd = lbnd+1
            call zcopy (ndmx*npol, g (1, ibnd), 1, h (1, ibnd), 1)
@@ -426,25 +378,14 @@ subroutine cgsolve_all (h_psi, cg_psi, e, d0psi, dpsi, h_diag, &
         endif
      enddo
 
-#ifdef __BANDS
-     kter_eff = kter_eff + DBLE (lbnd-ibnd_start+1) / DBLE (nbnd)
-#else
      kter_eff = kter_eff + DBLE (lbnd) / DBLE (nbnd)
-#endif
 
 #ifdef __MPI
-#  ifdef __BANDS
-     call mp_sum(  rho(ibnd_start:lbnd), intra_bgrp_comm )
-#  else
      call mp_sum(  rho(1:lbnd) , intra_pool_comm )
-#  endif
 #endif
 
-#ifdef __BANDS
-     do ibnd = ibnd_end, ibnd_start, -1
-#else
+
      do ibnd = nbnd, 1, -1
-#endif
         if (conv(ibnd).eq.0) then
            rho(ibnd)=rho(lbnd)
            lbnd = lbnd - 1
@@ -455,11 +396,7 @@ subroutine cgsolve_all (h_psi, cg_psi, e, d0psi, dpsi, h_diag, &
 
      conv_root = .true.
      anorm = 0.d0
-#ifdef __BANDS
-     do ibnd = ibnd_start, ibnd_end
-#else
      do ibnd = 1, nbnd
-#endif
         conv_root = conv_root .and. (conv(ibnd) .eq.1)
         anorm = anorm + sqrt(rho(ibnd)) / dble(nbnd)
      enddo
@@ -468,13 +405,8 @@ subroutine cgsolve_all (h_psi, cg_psi, e, d0psi, dpsi, h_diag, &
      !
      !        compute the step direction h. Conjugate it to previous step
      !
-#ifdef __BANDS
-     lbnd = ibnd_start - 1 
-     do ibnd = ibnd_start, ibnd_end
-#else
      lbnd = 0
      do ibnd = 1, nbnd
-#endif
         if (conv (ibnd) .eq.0) then
 !
 !          change sign to h 
@@ -497,21 +429,12 @@ subroutine cgsolve_all (h_psi, cg_psi, e, d0psi, dpsi, h_diag, &
      !
      !        compute t = A*h
      !
-#ifdef __BANDS
-     call h_psi (ndim, hold, t, eu, ik, nbnd, ibnd_start, lbnd)
-#else
      call h_psi (ndim, hold, t, eu, ik, lbnd)
-#endif
      !
      !        compute the coefficients a and c for the line minimization
      !        compute step length lambda
-#ifdef __BANDS
-     lbnd = ibnd_start - 1
-     do ibnd = ibnd_start, ibnd_end
-#else
      lbnd=0
      do ibnd = 1, nbnd
-#endif
         if (conv (ibnd) .eq.0) then
            lbnd=lbnd+1
            a(lbnd) = zdotc (ndmx*npol, h(1,ibnd), 1, g(1,ibnd), 1)
@@ -519,22 +442,12 @@ subroutine cgsolve_all (h_psi, cg_psi, e, d0psi, dpsi, h_diag, &
         end if
      end do
 #ifdef __MPI
-#  ifdef __BANDS
-     call mp_sum(  a(ibnd_start:lbnd), intra_bgrp_comm )
-     call mp_sum(  c(ibnd_start:lbnd), intra_bgrp_comm )
-#  else
      call mp_sum(  a(1:lbnd), intra_pool_comm )
      call mp_sum(  c(1:lbnd), intra_pool_comm )
-#  endif
 #endif
 
-#ifdef __BANDS
-     lbnd = ibnd_start - 1 
-     do ibnd = ibnd_start, ibnd_end
-#else
      lbnd=0
      do ibnd = 1, nbnd
-#endif
         if (conv (ibnd) .eq.0) then
            lbnd=lbnd+1
            dclambda = CMPLX( - a(lbnd) / c(lbnd), 0.d0,kind=DP)
@@ -557,20 +470,12 @@ subroutine cgsolve_all (h_psi, cg_psi, e, d0psi, dpsi, h_diag, &
   enddo
 100 continue
 
-#ifdef __BANDS
-   do ibnd = ibnd_start, ibnd_end
-     if (conv(ibnd) == 0 .and. me_bgrp == 0) &
-#else
    do ibnd = 1, nbnd
      if (conv(ibnd) == 0 .and. me_pool == 0) &
-#endif
        write(*,'(5x,"ik",i4," ibnd",i4,4x,"cgsolve_all: root not converged")') ik, ibnd
    enddo
 
-#ifdef __BANDS
-  call mp_sum(kter_eff, inter_bgrp_comm)
-  call mp_sum(anorm, inter_bgrp_comm)
-#endif
+
   kter = kter_eff
   deallocate (eu)
   deallocate (rho, rhoold)
