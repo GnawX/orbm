@@ -7,7 +7,7 @@
 !
 
 !-----------------------------------------------------------------------
-SUBROUTINE gipaw_setup
+SUBROUTINE setup
   !-----------------------------------------------------------------------
   !
   ! ... GIPAW setup
@@ -157,6 +157,6 @@ SUBROUTINE gipaw_setup
 
   call stop_clock('gipaw_setup')
     
-END SUBROUTINE gipaw_setup
+END SUBROUTINE setup
 
 
