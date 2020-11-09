@@ -7,11 +7,7 @@
 !
 
 !-----------------------------------------------------------------------
-#ifdef __BANDS
-subroutine ch_psi_all (n, h, ah, e, ik, m, ibnd_start, ibnd_end)
-#else
 subroutine ch_psi_all (n, h, ah, e, ik, m)
-#endif
   !-----------------------------------------------------------------------
   !
   ! This routine applies the operator ( H - \epsilon S + alpha_pv P_v)
@@ -21,25 +17,22 @@ subroutine ch_psi_all (n, h, ah, e, ik, m)
   USE wvfct,        ONLY : npwx, nbnd
   USE uspp,         ONLY : vkb
   USE becmod,       ONLY : becp, calbec
-  USE gipaw_module, ONLY : nbnd_occ, alpha_pv, evq
+  USE gipaw_module, ONLY : nbnd_occ, alpha_pv
   USE mp_pools,     ONLY : intra_pool_comm
   USE mp,           ONLY : mp_sum
-#ifdef __BANDS
-  USE mp_bands,     ONLY : intra_bgrp_comm
-#endif
+  USE noncollin_module,      ONLY : noncolin, npol
+  USE wavefunctions,         ONLY : evc
+  
   implicit none
 
   integer :: n, m, ik
   ! input: the dimension of h
   ! input: the number of bands
   ! input: the k point
-#ifdef __BANDS
-  integer, intent(in) :: ibnd_start, ibnd_end
-#endif
   real(DP) :: e (m)
   ! input: the eigenvalue
 
-  complex(DP) :: h (npwx, m), ah (npwx, m)
+  complex(DP) :: h (npwx*npol, m), ah (npwx*npol, m)
   ! input: the vector
   ! output: the operator applied to the vector
   !
@@ -57,85 +50,83 @@ subroutine ch_psi_all (n, h, ah, e, ik, m)
 
   call start_clock ('ch_psi')
   allocate (ps  ( nbnd , m))    
-  allocate (hpsi( npwx , m))    
-  allocate (spsi( npwx , m))    
+  allocate (hpsi( npwx*npol , m))    
+  allocate (spsi( npwx*npol , m))    
   hpsi (:,:) = (0.d0, 0.d0)
   spsi (:,:) = (0.d0, 0.d0)
   !
   !   compute the product of the hamiltonian with the h vector
   !
-#ifdef __BANDS
-  call h_psiq_bands (npwx, n, m, h, hpsi, spsi, ibnd_start, ibnd_end)
-#else
-  call h_psiq (npwx, n, m, h, hpsi, spsi)
-#endif
+
+  call h_psi ( npwx, n, m, h, hpsi )
+  CALL s_psi ( npwx, n, m, h, spsi )
+  
   call start_clock ('last')
   !
   !   then we compute the operator H-epsilon S
   !
   ah = (0.d0,0.d0)
-#ifdef __BANDS
-  do ibnd = ibnd_start, ibnd_end
-#else
+
   do ibnd = 1, m
-#endif
      do ig = 1, n
         ah (ig, ibnd) = hpsi (ig, ibnd) - e (ibnd) * spsi (ig, ibnd)
      enddo
   enddo
+  IF (noncolin) THEN
+     DO ibnd = 1, m
+        DO ig = 1, n
+           ah(ig+npwx, ibnd) = hpsi(ig+npwx, ibnd) - e(ibnd) * spsi(ig+npwx, ibnd)
+        ENDDO
+     ENDDO
+  ENDIF
   !
   !   Here we compute the projector in the valence band
   !
   ikq = ik
   ps (:,:) = (0.d0, 0.d0)
-#ifdef __BANDS
-  call zgemm ('C', 'N', nbnd_occ (ikq) , ibnd_end-ibnd_start+1, n, (1.d0, 0.d0) , evq, &
-       npwx, spsi(1,ibnd_start), npwx, (0.d0, 0.d0) , ps(1,ibnd_start), nbnd)
-  ps (:,ibnd_start:ibnd_end) = ps(:,ibnd_start:ibnd_end) * alpha_pv
-#else
-  call zgemm ('C', 'N', nbnd_occ (ikq) , m, n, (1.d0, 0.d0) , evq, &
-       npwx, spsi, npwx, (0.d0, 0.d0) , ps, nbnd)
+  if (noncolin) then
+     CALL zgemm ('C', 'N', nbnd_occ (ikq) , m, npwx*npol, (1.d0, 0.d0) , evc, &
+            npwx*npol, spsi, npwx*npol, (0.d0, 0.d0) , ps, nbnd)
+  else
+     call zgemm ('C', 'N', nbnd_occ (ikq) , m, n, (1.d0, 0.d0) , evc, &
+            npwx, spsi, npwx, (0.d0, 0.d0) , ps, nbnd)
+  endif
   ps (:,:) = ps(:,:) * alpha_pv
-#endif
 
 #ifdef __MPI
-#ifdef __BANDS
-  call mp_sum ( ps, intra_bgrp_comm )
-#else
   call mp_sum ( ps, intra_pool_comm )
-#endif
 #endif
 
   hpsi (:,:) = (0.d0, 0.d0)
-#ifdef __BANDS
-  call zgemm ('N', 'N', n, ibnd_end-ibnd_start+1, nbnd_occ (ikq) , (1.d0, 0.d0) , evq, &
-       npwx, ps(1,ibnd_start), nbnd, (1.d0, 0.d0) , hpsi(1,ibnd_start), npwx)
-  spsi(:,ibnd_start:ibnd_end) = hpsi(:,ibnd_start:ibnd_end)
-#else
-  call zgemm ('N', 'N', n, m, nbnd_occ (ikq) , (1.d0, 0.d0) , evq, &
-       npwx, ps, nbnd, (1.d0, 0.d0) , hpsi, npwx)
+  if (noncolin) then
+      CALL zgemm ('N', 'N', npwx*npol, m, nbnd_occ (ikq) , (1.d0, 0.d0) , evc, &
+            npwx*npol, ps, nbnd, (1.d0, 0.d0) , hpsi, npwx*npol)
+  else
+      call zgemm ('N', 'N', n, m, nbnd_occ (ikq) , (1.d0, 0.d0) , evc, &
+            npwx, ps, nbnd, (1.d0, 0.d0) , hpsi, npwx)
+  endif
   spsi(:,:) = hpsi(:,:)
-#endif
+
   !
   !    And apply S again
   !
-#ifdef __BANDS
-  call calbec_bands(npwx, n, nkb, vkb, hpsi, becp%k, m, ibnd_start, ibnd_end)
-  call s_psi_bands (npwx, n, m, hpsi, spsi, ibnd_start, ibnd_end)
-#else
+
   call calbec(n, vkb, hpsi, becp, m)
   call s_psi (npwx, n, m, hpsi, spsi)
-#endif
 
-#ifdef __BANDS
-  do ibnd = ibnd_start, ibnd_end 
-#else
+
   do ibnd = 1, m
-#endif
      do ig = 1, n
         ah (ig, ibnd) = ah (ig, ibnd) + spsi (ig, ibnd)
      enddo
   enddo
+  IF (noncolin) THEN
+       DO ibnd = 1, m
+          DO ig = 1, n
+             ah (ig+npwx, ibnd) = ah (ig+npwx, ibnd) + spsi (ig+npwx, ibnd)
+          ENDDO
+       ENDDO
+   END IF
 
   deallocate (spsi)
   deallocate (hpsi)
