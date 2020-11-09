@@ -6,7 +6,7 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 !-----------------------------------------------------------------------
-PROGRAM main
+PROGRAM optic_main
   !-----------------------------------------------------------------------
   !
   ! ... This is the main driver of the magnetic response program. 
@@ -27,10 +27,9 @@ PROGRAM main
   ! ... C. J. Pickard and F. Mauri, Phys. Rev. Lett. 88, 086403 (2002)
   ! ...
   USE kinds,           ONLY : DP
-  USE io_files,        ONLY : tmp_dir, create_directory, iunwfc, nwordwfc
   USE mp,              ONLY : mp_bcast
   USE cell_base,       ONLY : tpiba
-  USE gipaw_module,    ONLY : job, q_gipaw, max_seconds
+  USE optic_module,    ONLY : job, q_gipaw, max_seconds
   USE check_stop  ,    ONLY : check_stop_init
   USE control_flags,   ONLY : io_level, gamma_only, use_para_diag
   USE mp_global,       ONLY : mp_startup, nproc_pool_file
@@ -43,11 +42,11 @@ PROGRAM main
   USE mp_pools,        ONLY : nproc_pool
   USE environment,     ONLY : environment_start, environment_end
   USE lsda_mod,        ONLY : nspin
-  USE wvfct,           ONLY : nbnd, npwx
+  USE wvfct,           ONLY : nbnd
   USE uspp,            ONLY : okvan
   USE io_global,       ONLY : stdout
   USE buffers,         ONLY : open_buffer
-  USE noncollin_module,ONLY : noncolin, npol
+
   USE command_line_options, ONLY: input_file_, command_line, ndiag_
   ! for pluginization
   USE input_parameters, ONLY : nat_ => nat, ntyp_ => ntyp
@@ -56,14 +55,12 @@ PROGRAM main
   USE ions_base,        ONLY : nat, ntyp => nsp
   USE cell_base,        ONLY : ibrav
   ! end
-  USE gipaw_version
   USE iotk_module  
   !------------------------------------------------------------------------
   IMPLICIT NONE
-  CHARACTER (LEN=9)   :: code = 'GIPAW'
+  CHARACTER (LEN=9)   :: code = 'optic'
   CHARACTER (LEN=10)  :: dirname = 'dummy'
   LOGICAL, EXTERNAL  :: check_para_diag
-  logical :: exst
   !------------------------------------------------------------------------
 
   ! begin with the initialization part
@@ -81,13 +78,13 @@ PROGRAM main
 
 
   write(stdout,*)
-  write(stdout,'(5X,''***** This is GIPAW git revision '',A,'' *****'')') 'beta version'
+  write(stdout,'(5X,''***** This is optic git revision '',A,'' *****'')') 'beta version'
   write(stdout,'(5X,''***** you can cite: N. Varini et al., Comp. Phys. Comm. 184, 1827 (2013)  *****'')')
   write(stdout,'(5X,''***** in publications or presentations arising from this work.            *****'')')
   write(stdout,*)
  
 
-  call read_input()
+  call optic_readin()
   call check_stop_init( max_seconds )
 
   io_level = 1
@@ -100,19 +97,19 @@ PROGRAM main
   use_para_diag = .false.
 #endif
 
-  nwordwfc = nbnd*npwx*npol
-  CALL open_buffer( iunwfc, 'wfc', nwordwfc, io_level, exst )
+  call optic_openfil
 
-  if (gamma_only) call errore ('gipaw_main', 'Cannot run GIPAW with gamma_only == .true. ', 1)
-  if (okvan) call errore('gipaw_main', 'USPP not supported yet', 1)
+  if (gamma_only) call errore ('optic_main', 'Cannot run optic with gamma_only == .true. ', 1)
+  if (okvan) call errore('optic_main', 'USPP not supported yet', 1)
 
   nat_ = nat
   ntyp_ = ntyp
   ibrav_ = ibrav
   assume_isolated_ = 'none'
 
-  call setup()
-  call summary()
+  call optic_allocate()
+  call optic_setup()
+  call optic_summary()
   
   ! convert q_gipaw into units of tpiba
   q_gipaw = q_gipaw / tpiba
@@ -123,11 +120,12 @@ PROGRAM main
   call orbm
   
   ! print timings and stop the code
-  call print_clock_gipaw
+  call optic_closefil
+  call print_clock_optic
   call environment_end(code)
   call stop_code( .true. )
   
   STOP
   
-END PROGRAM main
+END PROGRAM optic_main
 
