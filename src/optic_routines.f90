@@ -7,14 +7,14 @@
 !
 
 !-----------------------------------------------------------------------
-SUBROUTINE gipaw_readin()
+SUBROUTINE optic_readin()
   !-----------------------------------------------------------------------
   !
   ! ... Read in the gipaw input file. The input file consists of a
   ! ... single namelist &inputgipaw. See doc/user-manual.pdf for the
   ! ... list of input keywords.
   !
-  USE gipaw_module
+  USE optic_module
   USE io_files,         ONLY : prefix, tmp_dir  
   USE io_global,        ONLY : ionode
   USE us,               ONLY : spline_ps
@@ -25,7 +25,7 @@ SUBROUTINE gipaw_readin()
   integer :: ios
   character(len=256), external :: trimcheck
   character(len=80) :: diagonalization, verbosity
-  namelist /inputgipaw/ job, prefix, tmp_dir, conv_threshold, restart_mode, &
+  namelist /inputopitc/ job, prefix, tmp_dir, conv_threshold, restart_mode, &
                         q_gipaw, iverbosity,  &
                         spline_ps, isolve, max_seconds, &
                         diagonalization, verbosity
@@ -91,20 +91,20 @@ SUBROUTINE gipaw_readin()
 
 #ifdef __MPI
   ! broadcast input variables  
-  call gipaw_bcast_input
+  call optic_bcast_input
 #endif
 
-END SUBROUTINE gipaw_readin
+END SUBROUTINE optic_readin
 
 
 #ifdef __MPI
 !-----------------------------------------------------------------------
-SUBROUTINE gipaw_bcast_input
+SUBROUTINE optic_bcast_input
   !-----------------------------------------------------------------------
   !
   ! ... Broadcast input data to all processors 
   !
-  USE gipaw_module
+  USE optic_module
   USE mp_world,      ONLY : world_comm
   USE mp,            ONLY : mp_bcast
   USE io_files,      ONLY : prefix, tmp_dir
@@ -124,18 +124,16 @@ SUBROUTINE gipaw_bcast_input
   call mp_bcast(max_seconds, root, world_comm)
   call mp_bcast(restart_mode, root, world_comm)
 
-END SUBROUTINE gipaw_bcast_input
+END SUBROUTINE optic_bcast_input
 #endif
-
-
-
+  
 !-----------------------------------------------------------------------
-SUBROUTINE gipaw_allocate
+SUBROUTINE optic_allocate
   !-----------------------------------------------------------------------
   !
   ! ... Allocate memory for GIPAW
   !
-  USE gipaw_module
+  USE optic_module
   USE ions_base,     ONLY : ntyp => nsp
   USE paw_gipaw,     ONLY : paw_recon
   USE pwcom
@@ -151,19 +149,16 @@ SUBROUTINE gipaw_allocate
   ! GIPAW projectors
   !if (.not. allocated(paw_recon)) allocate(paw_recon(ntyp))
     
-END SUBROUTINE gipaw_allocate
-  
-
+END SUBROUTINE optic_allocate
 
 !-----------------------------------------------------------------------
-SUBROUTINE gipaw_summary
+SUBROUTINE optic_summary
   !-----------------------------------------------------------------------
   !
   ! ... Print a short summary of the calculation
   !
-  USE gipaw_module
+  USE optic_module
   USE io_global,     ONLY : stdout
-  USE ldaU,          ONLY : lda_plus_U
   USE cellmd,        ONLY : cell_factor
   USE gvecw,         ONLY : ecutwfc
   USE us,            ONLY : spline_ps
@@ -184,16 +179,16 @@ SUBROUTINE gipaw_summary
 
   flush(stdout)
 
-END SUBROUTINE gipaw_summary
+END SUBROUTINE optic_summary
   
 
 !-----------------------------------------------------------------------
-SUBROUTINE gipaw_openfil
+SUBROUTINE optic_openfil
   !-----------------------------------------------------------------------
   !
   ! ... Open files needed for GIPAW
   !
-  USE gipaw_module
+  USE optic_module
   USE wvfct,            ONLY : nbnd, npwx
   USE io_files,         ONLY : iunwfc, nwordwfc
   USE noncollin_module, ONLY : npol
@@ -211,23 +206,21 @@ SUBROUTINE gipaw_openfil
   nwordwfc = nbnd*npwx*npol
   CALL open_buffer( iunwfc, 'wfc', nwordwfc, io_level, exst )
 
-END SUBROUTINE gipaw_openfil
+END SUBROUTINE optic_openfil
 
 
 !-----------------------------------------------------------------------
-SUBROUTINE gipaw_closefil
+SUBROUTINE optic_closefil
   !-----------------------------------------------------------------------
   !
   ! ... Close files opened by GIPAW, if any
   !
   return
 
-END SUBROUTINE gipaw_closefil
-
-
+END SUBROUTINE optic_closefil
 
 !-----------------------------------------------------------------------
-SUBROUTINE print_clock_gipaw
+SUBROUTINE print_clock_optic
   !-----------------------------------------------------------------------
   !
   ! ... Print clocks
@@ -236,7 +229,7 @@ SUBROUTINE print_clock_gipaw
   IMPLICIT NONE
 
   write(stdout,*) '    Initialization:'
-  call print_clock ('gipaw_setup')
+  call print_clock ('setup')
   write(stdout,*)
   write(stdout,*) '    Linear response'
   call print_clock ('greenf')
@@ -266,11 +259,11 @@ SUBROUTINE print_clock_gipaw
 #endif
 
 
-END SUBROUTINE print_clock_gipaw
+END SUBROUTINE print_clock_optic
 
 
 !-----------------------------------------------------------------------
-SUBROUTINE gipaw_memory_report
+SUBROUTINE optic_memory_report
   !-----------------------------------------------------------------------
   !
   ! ... Print estimated memory usage
@@ -306,6 +299,6 @@ SUBROUTINE gipaw_memory_report
      complex_size*paw_nkb*DBLE(npwx)/Mb, npwx, paw_nkb
   write(stdout,*)
 
-END SUBROUTINE gipaw_memory_report
+END SUBROUTINE optic_memory_report
 
 
