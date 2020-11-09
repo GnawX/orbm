@@ -6,7 +6,7 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 !-----------------------------------------------------------------------
-PROGRAM gipaw_main
+PROGRAM main
   !-----------------------------------------------------------------------
   !
   ! ... This is the main driver of the magnetic response program. 
@@ -27,7 +27,7 @@ PROGRAM gipaw_main
   ! ... C. J. Pickard and F. Mauri, Phys. Rev. Lett. 88, 086403 (2002)
   ! ...
   USE kinds,           ONLY : DP
-  USE io_files,        ONLY : tmp_dir, create_directory
+  USE io_files,        ONLY : tmp_dir, create_directory, iunwfc, nwordwfc
   USE mp,              ONLY : mp_bcast
   USE cell_base,       ONLY : tpiba
   USE gipaw_module,    ONLY : job, q_gipaw, max_seconds
@@ -43,10 +43,11 @@ PROGRAM gipaw_main
   USE mp_pools,        ONLY : nproc_pool
   USE environment,     ONLY : environment_start, environment_end
   USE lsda_mod,        ONLY : nspin
-  USE wvfct,           ONLY : nbnd
+  USE wvfct,           ONLY : nbnd, npwx
   USE uspp,            ONLY : okvan
   USE io_global,       ONLY : stdout
-  USE noncollin_module,ONLY : noncolin
+  USE buffers,         ONLY : open_buffer
+  USE noncollin_module,ONLY : noncolin, npol
   USE command_line_options, ONLY: input_file_, command_line, ndiag_
   ! for pluginization
   USE input_parameters, ONLY : nat_ => nat, ntyp_ => ntyp
@@ -62,6 +63,7 @@ PROGRAM gipaw_main
   CHARACTER (LEN=9)   :: code = 'GIPAW'
   CHARACTER (LEN=10)  :: dirname = 'dummy'
   LOGICAL, EXTERNAL  :: check_para_diag
+  logical :: exst
   !------------------------------------------------------------------------
 
   ! begin with the initialization part
@@ -79,13 +81,13 @@ PROGRAM gipaw_main
 
 
   write(stdout,*)
-  write(stdout,'(5X,''***** This is GIPAW git revision '',A,'' *****'')') gipaw_git_revision
+  write(stdout,'(5X,''***** This is GIPAW git revision '',A,'' *****'')') 'beta version'
   write(stdout,'(5X,''***** you can cite: N. Varini et al., Comp. Phys. Comm. 184, 1827 (2013)  *****'')')
   write(stdout,'(5X,''***** in publications or presentations arising from this work.            *****'')')
   write(stdout,*)
  
 
-  call gipaw_readin()
+  call read_input()
   call check_stop_init( max_seconds )
 
   io_level = 1
@@ -98,7 +100,8 @@ PROGRAM gipaw_main
   use_para_diag = .false.
 #endif
 
-  call gipaw_openfil
+  nwordwfc = nbnd*npwx*npol
+  CALL open_buffer( iunwfc, 'wfc', nwordwfc, io_level, exst )
 
   if (gamma_only) call errore ('gipaw_main', 'Cannot run GIPAW with gamma_only == .true. ', 1)
   if (okvan) call errore('gipaw_main', 'USPP not supported yet', 1)
@@ -108,9 +111,8 @@ PROGRAM gipaw_main
   ibrav_ = ibrav
   assume_isolated_ = 'none'
 
-  call gipaw_allocate()
-  call gipaw_setup()
-  call gipaw_summary()
+  call setup()
+  call summary()
   
   ! convert q_gipaw into units of tpiba
   q_gipaw = q_gipaw / tpiba
@@ -121,12 +123,11 @@ PROGRAM gipaw_main
   call orbm
   
   ! print timings and stop the code
-  call gipaw_closefil
   call print_clock_gipaw
   call environment_end(code)
   call stop_code( .true. )
   
   STOP
   
-END PROGRAM gipaw_main
+END PROGRAM main
 
