@@ -79,7 +79,7 @@ SUBROUTINE orbm
   ! print memory estimate
   call optic_memory_report
 
-  write(stdout, '(5X,''Computing the orbital magnetization'',$)')
+  write(stdout, '(5X,''Computing the orbital magnetization (bohr mag/cell):'',$)')
   write(stdout, '(5X,''ethr='',E12.4)') conv_threshold
 
 
@@ -148,7 +148,7 @@ SUBROUTINE orbm
   call mp_sum( berry, inter_pool_comm )
 #endif
     
-  morb = (mlc + mic - 2.d0*ef*berry)*ry2ha ! Hatree AU
+  morb = (mlc + mic - 2.d0*ef*berry)*ry2ha ! Borh mag
   ! in AU, Bohr magnetron is 1/2
 
   
