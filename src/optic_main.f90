@@ -34,7 +34,6 @@ PROGRAM optic_main
   USE control_flags,   ONLY : io_level, gamma_only, use_para_diag
   USE mp_global,       ONLY : mp_startup, nproc_pool_file
   USE mp_world,        ONLY : world_comm
-  USE mp_images,       ONLY : nimage, my_image_id
   USE mp_pools,        ONLY : intra_pool_comm
   USE mp_bands,        ONLY : intra_bgrp_comm, inter_bgrp_comm
   USE mp_diag,         ONLY : mp_start_diag
@@ -45,7 +44,6 @@ PROGRAM optic_main
   USE wvfct,           ONLY : nbnd
   USE uspp,            ONLY : okvan
   USE io_global,       ONLY : stdout
-  USE buffers,         ONLY : open_buffer
 
   USE command_line_options, ONLY: input_file_, command_line, ndiag_
   ! for pluginization
