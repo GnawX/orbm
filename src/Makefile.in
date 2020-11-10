@@ -7,7 +7,6 @@ DFLAGS += @dflags_gipaw@
 # location of needed modules
 MODFLAGS = $(MOD_FLAG)$(QE_SOURCE)/iotk/src $(MOD_FLAG)$(QE_SOURCE)/Modules \
            $(MOD_FLAG)$(QE_SOURCE)/FFTXlib $(MOD_FLAG)$(QE_SOURCE)/LAXlib \
-           $(MOD_FLAG)$(QE_SOURCE)/KS_Solvers/CG $(MOD_FLAG)$(QE_SOURCE)/KS_Solvers/Davidson \
            $(MOD_FLAG)$(QE_SOURCE)/PW/src \
            $(MOD_FLAG)$(QE_SOURCE)/UtilXlib $(MOD_FLAG).
 
@@ -19,9 +18,6 @@ GIPAW_OBJS = optic_module.o optic_main.o stop_code.o optic_setup.o \
 
 LIBOBJS = $(QE_SOURCE)/clib/clib.a $(QE_SOURCE)/iotk/src/libiotk.a
 QEMODS = $(QE_SOURCE)/Modules/libqemod.a \
-         $(QE_SOURCE)/KS_Solvers/Davidson/libdavid.a \
-         $(QE_SOURCE)/KS_Solvers/CG/libcg.a \
-         $(QE_SOURCE)/KS_Solvers/PPCG/libppcg.a \
          $(QE_SOURCE)/FFTXlib/libqefft.a \
          $(QE_SOURCE)/LAXlib/libqela.a \
          $(QE_SOURCE)/UtilXlib/libutil.a
