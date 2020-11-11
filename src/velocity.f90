@@ -68,8 +68,7 @@ SUBROUTINE apply_vel_NL(psi, vel_psi, ik, ipol)
   USE kinds,                ONLY : DP
   USE klist,                ONLY : xk, igk_k, ngk
   USE wvfct,                ONLY : nbnd, npwx, current_k
-  USE becmod,               ONLY : bec_type, becp, calbec, &
-                                   allocate_bec_type, deallocate_bec_type
+  USE becmod,               ONLY : becp
   USE uspp,                 ONLY : nkb, vkb
   USE cell_base,            ONLY : tpiba
   USE optic_module,         ONLY : q_gipaw, nbnd_occ
@@ -118,16 +117,16 @@ SUBROUTINE apply_vel_NL(psi, vel_psi, ik, ipol)
 
       ! compute <\beta(k \pm dk)| and project on |psi>
       call init_us_2_no_phase(npw, igk_k(1,ik), dxk, vkb)
-      call allocate_bec_type(nkb, nbnd_occ(ik), becp)
+      !call allocate_bec_type(nkb, nbnd_occ(ik), becp)
 
-      call calbec (npw, vkb, psi, becp, nbnd_occ(ik))
+      !call calbec (npw, vkb, psi, becp, nbnd_occ(ik))
 
       aux = (0.d0,0.d0)
       
       ! apply |\beta(k \pm dk+q)>D<\beta(k \pm dk)| to |psi>
 
       call add_vuspsi(npwx, npw, nbnd_occ(ik), aux)
-      call deallocate_bec_type(becp)
+      !call deallocate_bec_type(becp)
 
       vel_psi = vel_psi + dble(isign) * ryd_to_hartree * aux/(2.d0*dk*tpiba)
 

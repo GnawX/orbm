@@ -34,7 +34,7 @@ SUBROUTINE orbm
   USE uspp,                   ONLY : nkb, vkb
   USE gvecw,                  ONLY : gcutw
   USE lsda_mod,               ONLY : lsda, current_spin, isk
-  USE becmod,                 ONLY : becp, allocate_bec_type, deallocate_bec_type
+  USE becmod,                 ONLY : becp, calbec, allocate_bec_type, deallocate_bec_type
   USE optic_module,           ONLY : q_gipaw, iverbosity, alpha, &
                                      nbnd_occ, conv_threshold, restart_mode, ry2ha
   USE buffers,                ONLY : get_buffer
@@ -107,6 +107,7 @@ SUBROUTINE orbm
     npw = ngk(ik)
     call g2_kin( ik )
     if ( nkb >0 ) call init_us_2(npw, igk_k(1,ik), xk(1,ik), vkb)
+    call calbec(npw, vkb, evc, becp, nbnd)
     
     ! calculate du/dk    
     vel_evc(:,:,:) = (0.d0,0.d0)

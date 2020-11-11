@@ -17,8 +17,8 @@ SUBROUTINE greenfunction(ik, psi, g_psi)
   !
   USE kinds,                       ONLY : DP
   USE io_global,                   ONLY : stdout  
-  USE becmod,                      ONLY : bec_type, becp, calbec, &
-                                          allocate_bec_type, deallocate_bec_type
+!  USE becmod,                      ONLY : bec_type, becp, calbec, &
+!                                          allocate_bec_type, deallocate_bec_type
   USE wavefunctions,               ONLY : evc
   USE pwcom,                       ONLY : ef
   USE wvfct,                       ONLY : nbnd, et, npwx, g2kin
@@ -60,7 +60,7 @@ SUBROUTINE greenfunction(ik, psi, g_psi)
 
   ! allocate memory
   allocate (work(npwx*npol), ps(nbnd,nbnd), h_diag(npwx*npol,nbnd), eprec(nbnd))
-  call allocate_bec_type(nkb, nbnd, becp)
+  !call allocate_bec_type(nkb, nbnd, becp)
 
   !====================================================================
   ! apply -Q_{k+q} to the r.h.s.
@@ -180,7 +180,7 @@ SUBROUTINE greenfunction(ik, psi, g_psi)
   enddo
 
 
-  call calbec (npw, vkb, psi, becp, nbnd)
+  !call calbec (npw, vkb, psi, becp, nbnd)
 
 
   ! initial guess
@@ -204,6 +204,6 @@ SUBROUTINE greenfunction(ik, psi, g_psi)
  
   ! free memory
   deallocate (work, h_diag, eprec, ps)
-  call deallocate_bec_type (becp)
+  !call deallocate_bec_type (becp)
 
 END SUBROUTINE greenfunction
