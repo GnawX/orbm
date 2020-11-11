@@ -1771,10 +1771,10 @@ $as_echo_n "checking Quantum-Espresso version... " >&6; }
 version=`grep version_number ${qe_source}/Modules/version.f90 | cut -d\' -f2`
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $version" >&5
 $as_echo "$version" >&6; }
-case $version in
-  6.5* ) ;;
-  *) as_fn_error $? "Cannot compile against this version of Quantum-Espresso" "$LINENO" 5 ;;
-esac
+#case $version in
+#  6.5* ) ;;
+#  *) as_fn_error $? "Cannot compile against this version of Quantum-Espresso" "$LINENO" 5 ;;
+#esac
 
 ## Extract svn revision
 #AC_MSG_CHECKING([Quantum-Espresso SVN revision])
@@ -1796,7 +1796,7 @@ fi
 # export settings to generated files
 
 
-ac_config_files="$ac_config_files makedeps.sh src/Makefile src/Makefile-gpu"
+ac_config_files="$ac_config_files makedeps.sh src/Makefile"
 
 ac_config_commands="$ac_config_commands default"
 
@@ -2511,7 +2511,6 @@ do
   case $ac_config_target in
     "makedeps.sh") CONFIG_FILES="$CONFIG_FILES makedeps.sh" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
-    "src/Makefile-gpu") CONFIG_FILES="$CONFIG_FILES src/Makefile-gpu" ;;
     "default") CONFIG_COMMANDS="$CONFIG_COMMANDS default" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

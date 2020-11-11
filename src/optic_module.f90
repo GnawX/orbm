@@ -13,12 +13,11 @@ MODULE optic_module
   !
   USE kinds, ONLY : DP
   USE constants, ONLY : a0_to_cm => bohr_radius_cm
-  USE parameters, ONLY : npk, ntypx, lmaxx
+  USE parameters, ONLY : npk, ntypx
   
   IMPLICIT NONE
   SAVE
 
-  INTEGER, PARAMETER:: nbrx=2*(lmaxx+1)**2  ! max number of beta functions
 
   ! Physical constants:
   ! fine structure constant alpha (c = 1/alpha)

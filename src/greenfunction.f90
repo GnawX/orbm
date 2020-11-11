@@ -32,7 +32,7 @@ SUBROUTINE greenfunction(ik, psi, g_psi)
   USE cell_base,                   ONLY : tpiba
   USE klist,                       ONLY : lgauss, xk, degauss, ngauss, igk_k, ngk
   USE noncollin_module,            ONLY : noncolin, npol
-  USE gipaw_module
+  USE optic_module
 
   !-- parameters ---------------------------------------------------------
   IMPLICIT none
@@ -82,8 +82,8 @@ SUBROUTINE greenfunction(ik, psi, g_psi)
         wg1 = wgauss ((ef-et(ibnd,ik)) / degauss, ngauss)
         w0g = w0gauss((ef-et(ibnd,ik)) / degauss, ngauss) / degauss
         do jbnd = 1, nbnd
-           wgp = wgauss ( (ef - etq(jbnd,ik)) / degauss, ngauss)
-           deltae = etq(jbnd,ik) - et(ibnd,ik)
+           wgp = wgauss ( (ef - et(jbnd,ik)) / degauss, ngauss)
+           deltae = et(jbnd,ik) - et(ibnd,ik)
            theta = wgauss (deltae / degauss, 0)
            wwg = wg1 * (1.d0 - theta) + wgp * theta
            if (jbnd <= nbnd_occ(ik)) then
@@ -103,10 +103,10 @@ SUBROUTINE greenfunction(ik, psi, g_psi)
      ! insulators
      if (noncolin) then
      
-         CALL zgemm('C', 'N', nbnd_occ (ik), nbnd_occ (ik), npwx*npol, (1.d0,0.d0), evq(1,1), &
+         CALL zgemm('C', 'N', nbnd_occ (ik), nbnd_occ (ik), npwx*npol, (1.d0,0.d0), evc(1,1), &
                     npwx*npol, psi(1,1), npwx*npol, (0.d0,0.d0), ps(1,1), nbnd)
      else
-         CALL zgemm('C', 'N', nbnd_occ (ik), nbnd_occ (ik), npw, (1.d0,0.d0), evq(1,1), &
+         CALL zgemm('C', 'N', nbnd_occ (ik), nbnd_occ (ik), npw, (1.d0,0.d0), evc(1,1), &
                     npwx, psi(1,1), npwx, (0.d0,0.d0), ps(1,1), nbnd)
      endif
  

@@ -36,7 +36,6 @@ PROGRAM optic_main
   USE mp_world,        ONLY : world_comm
   USE mp_pools,        ONLY : intra_pool_comm
   USE mp_bands,        ONLY : intra_bgrp_comm, inter_bgrp_comm
-  USE mp_diag,         ONLY : mp_start_diag
   USE mp_bands,        ONLY : nbgrp
   USE mp_pools,        ONLY : nproc_pool
   USE environment,     ONLY : environment_start, environment_end
@@ -56,6 +55,9 @@ PROGRAM optic_main
   USE iotk_module  
   !------------------------------------------------------------------------
   IMPLICIT NONE
+
+  include 'laxlib.fh'
+
   CHARACTER (LEN=9)   :: code = 'optic'
   CHARACTER (LEN=10)  :: dirname = 'dummy'
   LOGICAL, EXTERNAL  :: check_para_diag
@@ -67,7 +69,7 @@ PROGRAM optic_main
   
   ! no band parallelization
   
-  call mp_start_diag(ndiag_, world_comm, intra_pool_comm, do_distr_diag_inside_bgrp_=.true.)
+  call laxlib_start(ndiag_, world_comm, intra_pool_comm, do_distr_diag_inside_bgrp_=.true.)
 
   call set_mpi_comm_4_solvers( intra_pool_comm, intra_bgrp_comm, inter_bgrp_comm)
 

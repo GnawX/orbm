@@ -24,7 +24,7 @@ SUBROUTINE apply_p(psi, p_psi, ik, ipol)
   USE kinds,                ONLY : DP
   USE klist,                ONLY : xk, igk_k, ngk
   USE wvfct,                ONLY : nbnd, npwx
-  USE gipaw_module,         ONLY : nbnd_occ
+  USE optic_module,         ONLY : nbnd_occ
   USE gvect,                ONLY : g
   USE cell_base,            ONLY : tpiba
   USE noncollin_module,     ONLY : noncolin, npol
@@ -72,7 +72,7 @@ SUBROUTINE apply_vel_NL(psi, vel_psi, ik, ipol)
                                    allocate_bec_type, deallocate_bec_type
   USE uspp,                 ONLY : nkb, vkb
   USE cell_base,            ONLY : tpiba
-  USE gipaw_module,         ONLY : q_gipaw, nbnd_occ
+  USE optic_module,         ONLY : q_gipaw, nbnd_occ
   USE lsda_mod,             ONLY : current_spin, lsda, isk, nspin
   USE noncollin_module,     ONLY : noncolin, npol
 
@@ -149,6 +149,7 @@ SUBROUTINE apply_vel(psi, vel_psi, ik, ipol)
   !
   ! ... Apply the velocity operator
   !-----------------------------------------------------------------------
+  USE kinds,                ONLY : DP
   USE wvfct,                ONLY : nbnd, npwx 
   USE noncollin_module,     ONLY : npol
 

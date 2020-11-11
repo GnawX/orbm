@@ -29,7 +29,7 @@ SUBROUTINE orbm
   USE wavefunctions,          ONLY : evc
   USE noncollin_module,       ONLY : npol
   USE klist,                  ONLY : nks, wk, xk, igk_k, ngk
-  USE wvfct,                  ONLY : nbnd, npwx, wg, g2kin, current_k
+  USE wvfct,                  ONLY : nbnd, npwx, wg, g2kin, current_k,et
   USE ener,                   ONLY : ef
   USE uspp,                   ONLY : nkb, vkb
   USE gvecw,                  ONLY : gcutw
@@ -51,11 +51,12 @@ SUBROUTINE orbm
   ! temporary working array, same size as evc/evq
   complex(dp), allocatable :: aux(:,:)
   complex(dp), allocatable :: hpsi(:)
-  real(dp) :: berry(3), mlc(3), mic(3), morb
+  real(dp) :: berry(3), mlc(3), mic(3), morb(3)
 
   integer :: ik
   integer :: i, ibnd,  ii, jj
-  real(dp) :: q(3), braket
+  real(dp) :: q(3)
+  complex(dp) :: braket
   complex(dp), external :: zdotc
   real(dp), external :: get_clock
   integer :: npw

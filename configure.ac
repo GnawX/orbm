@@ -24,13 +24,13 @@ AC_CHECK_FILE(${qe_source}/make.inc, [], [AC_MSG_ERROR([Cannot find make.inc in 
 AC_CHECK_FILE(${qe_source}/Modules/version.f90, [], [AC_MSG_ERROR([Cannot find version.f90 in ${qe_source}/Modules])])
 
 # Extract version
-AC_MSG_CHECKING([Quantum-Espresso version])
-version=`grep version_number ${qe_source}/Modules/version.f90 | cut -d\' -f2`
-AC_MSG_RESULT([$version])
-case $version in
-  6.5* ) ;;
-  *) AC_MSG_ERROR([Cannot compile against this version of Quantum-Espresso]) ;;
-esac
+#AC_MSG_CHECKING([Quantum-Espresso version])
+#version=`grep version_number ${qe_source}/Modules/version.f90 | cut -d\' -f2`
+#AC_MSG_RESULT([$version])
+#case $version in
+#  6.5* ) ;;
+#  *) AC_MSG_ERROR([Cannot compile against this version of Quantum-Espresso]) ;;
+#esac
 
 ## Extract svn revision
 #AC_MSG_CHECKING([Quantum-Espresso SVN revision])
@@ -52,7 +52,7 @@ fi
 # export settings to generated files
 AC_SUBST(qe_source)
 AC_SUBST(dflags_gipaw)
-AC_OUTPUT([makedeps.sh src/Makefile src/Makefile-gpu], [chmod +x makedeps.sh])
+AC_OUTPUT([makedeps.sh src/Makefile], [chmod +x makedeps.sh])
 
 # default commands
 ./makedeps.sh

@@ -25,7 +25,7 @@ SUBROUTINE optic_readin()
   integer :: ios
   character(len=256), external :: trimcheck
   character(len=80) :: diagonalization, verbosity
-  namelist /inputopitc/ job, prefix, tmp_dir, conv_threshold, restart_mode, &
+  namelist /inputoptic/ job, prefix, tmp_dir, conv_threshold, restart_mode, &
                         q_gipaw, iverbosity,  &
                         spline_ps, isolve, max_seconds, verbosity
                         
@@ -119,7 +119,6 @@ SUBROUTINE optic_allocate
   !
   USE optic_module
   USE ions_base,     ONLY : ntyp => nsp
-  USE paw_gipaw,     ONLY : paw_recon
   USE pwcom
     
   implicit none
@@ -256,7 +255,6 @@ SUBROUTINE optic_memory_report
   USE noncollin_module,          ONLY : npol
   USE uspp,                      ONLY : okvan, nkb
   USE fft_base,                  ONLY : dffts
-  USE paw_gipaw,                 ONLY : paw_nkb
   USE pwcom
   IMPLICIT NONE
   integer, parameter :: Mb=1024*1024, complex_size=16, real_size=8
@@ -279,8 +277,6 @@ SUBROUTINE optic_memory_report
   
   write(stdout,'(8x,"NL pseudopotentials       ",f10.2," Mb",5x,"(",i8,",",i5,")")') &
      complex_size*nkb*DBLE(npwx)/Mb, npwx, nkb
-  write(stdout,'(8x,"GIPAW NL terms            ",f10.2," Mb",5x,"(",i8,",",i5,")")') &
-     complex_size*paw_nkb*DBLE(npwx)/Mb, npwx, paw_nkb
   write(stdout,*)
 
 END SUBROUTINE optic_memory_report

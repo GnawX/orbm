@@ -17,7 +17,7 @@ subroutine ch_psi_all (n, h, ah, e, ik, m)
   USE wvfct,        ONLY : npwx, nbnd
   USE uspp,         ONLY : vkb
   USE becmod,       ONLY : becp, calbec
-  USE gipaw_module, ONLY : nbnd_occ, alpha_pv
+  USE optic_module, ONLY : nbnd_occ, alpha_pv
   USE mp_pools,     ONLY : intra_pool_comm
   USE mp,           ONLY : mp_sum
   USE noncollin_module,      ONLY : noncolin, npol
