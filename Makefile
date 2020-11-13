@@ -1,15 +1,15 @@
-# Top level makefile for qe-gipaw
+# Top level makefile for qe-orbm
 
 all:    build
 
 build:
-	@echo "Building qe-gipaw..."
+	@echo "Building qe-orbm..."
 	$(MAKE) -C src
 
 clean:
-	@echo "Cleaning qe-gipaw..."
+	@echo "Cleaning qe-orbm..."
 	if test -s src/Makefile ; then ( $(MAKE) -C src clean ); fi
-	-/bin/rm -f bin/optic.x
+	-/bin/rm -f bin/orbm.x
 
 distclean:
 	$(MAKE) -C src distclean

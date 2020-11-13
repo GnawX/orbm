@@ -1,5 +1,5 @@
 # Autoconf template for qe-gipaw
-AC_INIT(qe-gipaw, 6.5, dceresoli@gmail.com, qe-gipaw)
+AC_INIT(qe-orbm, 6.6, wxiaom86@gmail.com, qe-orbm)
 
 # Option: Quantum-Espresso source directory (QE_SOURCE)
 AC_ARG_WITH(qe-source,
@@ -44,14 +44,14 @@ AC_CHECK_FILE(${qe_source}/Modules/version.f90, [], [AC_MSG_ERROR([Cannot find v
 #fi
 
 # process options
-dflags_gipaw=''
+dflags_orbm=''
 if test $BAND_PARALLEL = yes ; then 
-  dflags_gipaw="${dflags_gipaw} -D__BANDS"
+  dflags_orbm="${dflags_orbm} -D__BANDS"
 fi
 
 # export settings to generated files
 AC_SUBST(qe_source)
-AC_SUBST(dflags_gipaw)
+AC_SUBST(dflags_orbm)
 AC_OUTPUT([makedeps.sh src/Makefile], [chmod +x makedeps.sh])
 
 # default commands
