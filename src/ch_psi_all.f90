@@ -16,7 +16,7 @@ subroutine ch_psi_all (n, h, ah, e, ik, m)
   USE kinds,        ONLY : dp
   USE wvfct,        ONLY : npwx, nbnd
   USE uspp,         ONLY : vkb
-  USE becmod,       ONLY : becp, calbec
+!  USE becmod,       ONLY : becp, calbec
   USE optic_module, ONLY : nbnd_occ, alpha_pv
   USE mp_pools,     ONLY : intra_pool_comm
   USE mp,           ONLY : mp_sum
@@ -111,8 +111,8 @@ subroutine ch_psi_all (n, h, ah, e, ik, m)
   !    And apply S again
   !
 
-  call calbec(n, vkb, hpsi, becp, m)
-  call s_psi (npwx, n, m, hpsi, spsi)
+  !call calbec(n, vkb, hpsi, becp, m)
+  !call s_psi (npwx, n, m, hpsi, spsi)
 
 
   do ibnd = 1, m

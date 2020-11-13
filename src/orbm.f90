@@ -32,6 +32,7 @@ SUBROUTINE orbm
   USE wvfct,                  ONLY : nbnd, npwx, wg, g2kin, current_k,et
   USE ener,                   ONLY : ef
   USE uspp,                   ONLY : nkb, vkb
+  USE gvect,                  ONLY : ngm, g
   USE gvecw,                  ONLY : gcutw
   USE lsda_mod,               ONLY : lsda, current_spin, isk
   USE becmod,                 ONLY : becp, calbec, allocate_bec_type, deallocate_bec_type
@@ -75,7 +76,6 @@ SUBROUTINE orbm
   !-----------------------------------------------------------------------
   allocate ( vel_evc(npwx*npol,nbnd,3), evc1(npwx*npol,nbnd,3) )
   allocate ( aux(npwx*npol,nbnd),  hpsi(npwx*npol) )
-  call allocate_bec_type(nkb, nbnd, becp)
 
   ! print memory estimate
   call optic_memory_report
@@ -98,16 +98,18 @@ SUBROUTINE orbm
       ik, nks, get_clock('optic')
 #endif
 
-    ! read wfcs from file and compute becp
-    call get_buffer (evc, nwordwfc, iunwfc, ik)
-    
     ! initialize k, spin, g2kin used in h_psi    
     current_k = ik
     if (lsda) current_spin = isk(ik)
     npw = ngk(ik)
-    call g2_kin( ik )
-    if ( nkb >0 ) call init_us_2(npw, igk_k(1,ik), xk(1,ik), vkb)
-    call calbec(npw, vkb, evc, becp, nbnd)
+    call gk_sort(xk(1,ik), ngm, g, gcutw, npw, igk_k(1,ik), g2kin)
+    g2kin(:) = g2kin(:) * tpiba2
+    call init_us_2(npw, igk_k(1,ik), xk(1,ik), vkb)
+
+
+    ! read wfcs from file and compute becp
+    call get_buffer (evc, nwordwfc, iunwfc, ik)
+    
     
     ! calculate du/dk    
     vel_evc(:,:,:) = (0.d0,0.d0)
@@ -116,7 +118,10 @@ SUBROUTINE orbm
        aux(:,:) = vel_evc(:,:,i)
        call greenfunction(ik, aux, evc1(1,1,i))
     enddo
-    
+
+       
+    call allocate_bec_type(nkb, nbnd, becp)
+
     ! calculate orbital magnetization
     ! loop over the bands
     do ibnd = 1, nbnd_occ(ik)
@@ -126,7 +131,7 @@ SUBROUTINE orbm
           ! IC term
           braket = zdotc(npwx*npol, evc1(1,ibnd,ii), 1, evc1(1,ibnd,jj), 1)
           mic(i) = mic(i) + 2.d0*wg(ibnd,ik)*et(ibnd,ik)*imag(braket)
-          berry(i) = berry(i) + 2.d0*wg(ibnd,ik)*et(ibnd,ik)*imag(braket)
+          berry(i) = berry(i) + 2.d0*wg(ibnd,ik)*imag(braket)
           ! LC term
           call h_psi(npwx, npw, 1, evc1(:,ibnd,jj), hpsi)
           braket = zdotc(npwx*npol, evc1(1,ibnd,ii), 1, hpsi, 1)
@@ -137,8 +142,9 @@ SUBROUTINE orbm
           mlc(i) = mlc(i) - wg(ibnd,ik)*imag(braket)
        enddo ! ipol
     enddo ! ibnd
+    call deallocate_bec_type (becp)
   enddo ! ik
-    
+
 #ifdef __MPI
   ! reduce over G-vectors
   call mp_sum( mlc, intra_pool_comm )
@@ -149,8 +155,10 @@ SUBROUTINE orbm
   call mp_sum( mic, inter_pool_comm )
   call mp_sum( berry, inter_pool_comm )
 #endif
-    
-  morb = (mlc + mic - 2.d0*ef*berry)*ry2ha ! Borh mag
+  
+  mlc = ( mlc - ef*berry )*ry2ha
+  mic = ( mic - ef*berry )*ry2ha
+  morb = mlc + mic ! Borh mag
   ! in AU, Bohr magnetron is 1/2
 
   
@@ -158,13 +166,16 @@ SUBROUTINE orbm
   !====================================================================
   ! print out results
   !====================================================================
+  write(stdout,*)
   write(stdout,'(5X,''End of orbital magnetization calculation'')')
   write(stdout,*)
-  write(stdout,'(5X,''M_orb              = '',3(F14.6))') morb
+  write(stdout,'(5X,''M_tot             = '',3(F14.6))') morb
+  write(stdout,'(5X,''M_LC              = '',3(F14.6))') mlc
+  write(stdout,'(5X,''M_IC              = '',3(F14.6))') mic
+  write(stdout,*)
 
   ! free memory as soon as possible
   deallocate( vel_evc, aux, evc1, hpsi )
-  call deallocate_bec_type (becp)
 
   
   !call restart_cleanup ( )

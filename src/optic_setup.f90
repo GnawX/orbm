@@ -56,7 +56,7 @@ SUBROUTINE optic_setup
   call set_vrs (vrs, vltot, v%of_r, kedtau, v%kin_r, dfftp%nnr, nspin, doublegrid)
     
   ! compute the D for the pseudopotentials
-  call newd
+  !call newd
     
   !! set non linear core correction stuff (IS THIS REALLY NEEDED?)
   !! nlcc_any = ANY ( upf(1:ntyp)%nlcc )

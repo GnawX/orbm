@@ -17,8 +17,8 @@ SUBROUTINE greenfunction(ik, psi, g_psi)
   !
   USE kinds,                       ONLY : DP
   USE io_global,                   ONLY : stdout  
-!  USE becmod,                      ONLY : bec_type, becp, calbec, &
-!                                          allocate_bec_type, deallocate_bec_type
+  USE becmod,                      ONLY : bec_type, becp, calbec, &
+                                          allocate_bec_type, deallocate_bec_type
   USE wavefunctions,               ONLY : evc
   USE pwcom,                       ONLY : ef
   USE wvfct,                       ONLY : nbnd, et, npwx, g2kin
@@ -60,7 +60,7 @@ SUBROUTINE greenfunction(ik, psi, g_psi)
 
   ! allocate memory
   allocate (work(npwx*npol), ps(nbnd,nbnd), h_diag(npwx*npol,nbnd), eprec(nbnd))
-  !call allocate_bec_type(nkb, nbnd, becp)
+  call allocate_bec_type(nkb, nbnd, becp)
 
   !====================================================================
   ! apply -Q_{k+q} to the r.h.s.
@@ -112,26 +112,28 @@ SUBROUTINE greenfunction(ik, psi, g_psi)
  
   endif
 
-
+#ifdef __MPI
+  call mp_sum(ps, intra_pool_comm)
+#endif
 
   if (lgauss) then
      ! metallic case
      if (noncolin) then
           CALL zgemm( 'N', 'N', npwx*npol, nbnd_occ(ik), nbnd, (1.d0,0.d0), &
-          g_psi(1,1), npwx*npol, ps(1,1), nbnd, (-1.d0,0.d0), psi(1,1), npwx*npol )
+          evc(1,1), npwx*npol, ps(1,1), nbnd, (-1.d0,0.d0), psi(1,1), npwx*npol )
      else
           CALL zgemm( 'N', 'N', npw, nbnd_occ(ik), nbnd, (1.d0,0.d0), &
-          g_psi(1,1), npwx, ps(1,1), nbnd, (-1.d0,0.d0), psi(1,1), npwx )
+          evc(1,1), npwx, ps(1,1), nbnd, (-1.d0,0.d0), psi(1,1), npwx )
      endif
 
   else
      ! insulators
      if (noncolin) then
          CALL zgemm( 'N', 'N', npwx*npol, nbnd_occ(ik), nbnd_occ(ik), (1.d0,0.d0), &
-         g_psi(1,1), npwx*npol, ps(1,1), nbnd, (-1.d0,0.d0), psi(1,1), npwx*npol )
+         evc(1,1), npwx*npol, ps(1,1), nbnd, (-1.d0,0.d0), psi(1,1), npwx*npol )
      else
          CALL zgemm( 'N', 'N', npw, nbnd_occ(ik), nbnd_occ(ik), (1.d0,0.d0), &
-         g_psi(1,1), npwx, ps(1,1), nbnd, (-1.d0,0.d0), psi(1,1), npwx )
+         evc(1,1), npwx, ps(1,1), nbnd, (-1.d0,0.d0), psi(1,1), npwx )
      endif
 
   endif
@@ -150,12 +152,12 @@ SUBROUTINE greenfunction(ik, psi, g_psi)
   thresh = sqrt(conv_threshold)   ! sqrt(of that of PARATEC)
 
   ! use the hamiltonian at k
-  do ig = 1, npw
-    gk(1) = (xk(1,ik) + g(1,igk_k(ig,ik)) ) * tpiba
-    gk(2) = (xk(2,ik) + g(2,igk_k(ig,ik)) ) * tpiba
-    gk(3) = (xk(3,ik) + g(3,igk_k(ig,ik)) ) * tpiba
-    g2kin (ig) = gk(1)**2 + gk(2)**2 + gk(3)**2
-  enddo
+  !do ig = 1, npw
+  !  gk(1) = (xk(1,ik) + g(1,igk_k(ig,ik)) ) * tpiba
+  !  gk(2) = (xk(2,ik) + g(2,igk_k(ig,ik)) ) * tpiba
+  !  gk(3) = (xk(3,ik) + g(3,igk_k(ig,ik)) ) * tpiba
+  !  g2kin (ig) = gk(1)**2 + gk(2)**2 + gk(3)**2
+  !enddo
 
   ! preconditioning of the linear system
   work = (0.d0,0.d0)
@@ -167,6 +169,10 @@ SUBROUTINE greenfunction(ik, psi, g_psi)
      endif
      eprec (ibnd) = 1.35d0 * zdotc (npwx*npol, evc (1, ibnd), 1, work, 1)
   enddo
+
+#ifdef __MPI
+  call mp_sum ( eprec, intra_pool_comm )
+#endif
 
   h_diag = 0.d0
 
@@ -204,6 +210,6 @@ SUBROUTINE greenfunction(ik, psi, g_psi)
  
   ! free memory
   deallocate (work, h_diag, eprec, ps)
-  !call deallocate_bec_type (becp)
+  call deallocate_bec_type (becp)
 
 END SUBROUTINE greenfunction
