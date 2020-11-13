@@ -7,14 +7,14 @@
 !
 
 !-----------------------------------------------------------------------
-SUBROUTINE optic_readin()
+SUBROUTINE orbm_readin()
   !-----------------------------------------------------------------------
   !
   ! ... Read in the gipaw input file. The input file consists of a
   ! ... single namelist &inputgipaw. See doc/user-manual.pdf for the
   ! ... list of input keywords.
   !
-  USE optic_module
+  USE orbm_module
   USE io_files,         ONLY : prefix, tmp_dir  
   USE io_global,        ONLY : ionode
   USE us,               ONLY : spline_ps
@@ -25,7 +25,7 @@ SUBROUTINE optic_readin()
   integer :: ios
   character(len=256), external :: trimcheck
   character(len=80) :: diagonalization, verbosity
-  namelist /inputoptic/ job, prefix, tmp_dir, conv_threshold, restart_mode, &
+  namelist /inputorbm/ job, prefix, tmp_dir, conv_threshold, restart_mode, &
                         q_gipaw, iverbosity,  &
                         spline_ps, isolve, max_seconds, verbosity
                         
@@ -50,15 +50,15 @@ SUBROUTINE optic_readin()
   max_seconds  =  1.d7
 
   ! read input    
-  read( 5, inputoptic, err = 200, iostat = ios )
+  read( 5, inputorbm, err = 200, iostat = ios )
 
   ! check input
-  if (max_seconds < 0.1d0) call errore ('optic_readin', ' wrong max_seconds', 1)
-200 call errore('optic_readin', 'reading inputoptic namelist', abs(ios))
+  if (max_seconds < 0.1d0) call errore ('orbm_readin', ' wrong max_seconds', 1)
+200 call errore('orbm_readin', 'reading inputorbm namelist', abs(ios))
 
   ! further checks
   if (iverbosity /= -1) &
-     call errore('optic_readin', '*** iverbosity is obsolete, use verbosity instead ***', 1)
+     call errore('orbm_readin', '*** iverbosity is obsolete, use verbosity instead ***', 1)
 
 
   select case (verbosity)
@@ -69,26 +69,26 @@ SUBROUTINE optic_readin()
      case('high')
        iverbosity = 21
      case default
-       call errore('optic_readin', 'verbosity can be ''low'', ''medium'' or ''high''', 1)
+       call errore('orbm_readin', 'verbosity can be ''low'', ''medium'' or ''high''', 1)
   end select
 400 continue
 
 #ifdef __MPI
   ! broadcast input variables  
-  call optic_bcast_input
+  call orbm_bcast_input
 #endif
 
-END SUBROUTINE optic_readin
+END SUBROUTINE orbm_readin
 
 
 #ifdef __MPI
 !-----------------------------------------------------------------------
-SUBROUTINE optic_bcast_input
+SUBROUTINE orbm_bcast_input
   !-----------------------------------------------------------------------
   !
   ! ... Broadcast input data to all processors 
   !
-  USE optic_module
+  USE orbm_module
   USE mp_world,      ONLY : world_comm
   USE mp,            ONLY : mp_bcast
   USE io_files,      ONLY : prefix, tmp_dir
@@ -108,16 +108,16 @@ SUBROUTINE optic_bcast_input
   call mp_bcast(max_seconds, root, world_comm)
   call mp_bcast(restart_mode, root, world_comm)
 
-END SUBROUTINE optic_bcast_input
+END SUBROUTINE orbm_bcast_input
 #endif
   
 !-----------------------------------------------------------------------
-SUBROUTINE optic_allocate
+SUBROUTINE orbm_allocate
   !-----------------------------------------------------------------------
   !
   ! ... Allocate memory for GIPAW
   !
-  USE optic_module
+  USE orbm_module
   USE ions_base,     ONLY : ntyp => nsp
   USE pwcom
     
@@ -132,15 +132,15 @@ SUBROUTINE optic_allocate
   ! GIPAW projectors
   !if (.not. allocated(paw_recon)) allocate(paw_recon(ntyp))
     
-END SUBROUTINE optic_allocate
+END SUBROUTINE orbm_allocate
 
 !-----------------------------------------------------------------------
-SUBROUTINE optic_summary
+SUBROUTINE orbm_summary
   !-----------------------------------------------------------------------
   !
   ! ... Print a short summary of the calculation
   !
-  USE optic_module
+  USE orbm_module
   USE io_global,     ONLY : stdout
   USE cellmd,        ONLY : cell_factor
   USE gvecw,         ONLY : ecutwfc
@@ -149,7 +149,7 @@ SUBROUTINE optic_summary
 
   if (.not. spline_ps) then
       write(stdout,*)
-      call infomsg('optic_summary', 'spline_ps is .false., expect some extrapolation errors')
+      call infomsg('orbm_summary', 'spline_ps is .false., expect some extrapolation errors')
   endif
 
   write(stdout,*)
@@ -162,16 +162,16 @@ SUBROUTINE optic_summary
 
   flush(stdout)
 
-END SUBROUTINE optic_summary
+END SUBROUTINE orbm_summary
   
 
 !-----------------------------------------------------------------------
-SUBROUTINE optic_openfil
+SUBROUTINE orbm_openfil
   !-----------------------------------------------------------------------
   !
   ! ... Open files needed for GIPAW
   !
-  USE optic_module
+  USE orbm_module
   USE wvfct,            ONLY : nbnd, npwx
   USE io_files,         ONLY : iunwfc, nwordwfc
   USE noncollin_module, ONLY : npol
@@ -189,21 +189,21 @@ SUBROUTINE optic_openfil
   nwordwfc = nbnd*npwx*npol
   CALL open_buffer( iunwfc, 'wfc', nwordwfc, io_level, exst )
 
-END SUBROUTINE optic_openfil
+END SUBROUTINE orbm_openfil
 
 
 !-----------------------------------------------------------------------
-SUBROUTINE optic_closefil
+SUBROUTINE orbm_closefil
   !-----------------------------------------------------------------------
   !
   ! ... Close files opened by GIPAW, if any
   !
   return
 
-END SUBROUTINE optic_closefil
+END SUBROUTINE orbm_closefil
 
 !-----------------------------------------------------------------------
-SUBROUTINE print_clock_optic
+SUBROUTINE print_clock_orbm
   !-----------------------------------------------------------------------
   !
   ! ... Print clocks
@@ -242,11 +242,11 @@ SUBROUTINE print_clock_optic
 #endif
 
 
-END SUBROUTINE print_clock_optic
+END SUBROUTINE print_clock_orbm
 
 
 !-----------------------------------------------------------------------
-SUBROUTINE optic_memory_report
+SUBROUTINE orbm_memory_report
   !-----------------------------------------------------------------------
   !
   ! ... Print estimated memory usage
@@ -279,6 +279,6 @@ SUBROUTINE optic_memory_report
      complex_size*nkb*DBLE(npwx)/Mb, npwx, nkb
   write(stdout,*)
 
-END SUBROUTINE optic_memory_report
+END SUBROUTINE orbm_memory_report
 
 

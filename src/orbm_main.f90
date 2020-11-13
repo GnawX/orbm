@@ -6,7 +6,7 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 !-----------------------------------------------------------------------
-PROGRAM optic_main
+PROGRAM orbm_main
   !-----------------------------------------------------------------------
   !
   ! ... This is the main driver of the magnetic response program. 
@@ -29,7 +29,7 @@ PROGRAM optic_main
   USE kinds,           ONLY : DP
   USE mp,              ONLY : mp_bcast
   USE cell_base,       ONLY : tpiba
-  USE optic_module,    ONLY : job, q_gipaw, max_seconds
+  USE orbm_module,    ONLY : job, q_gipaw, max_seconds
   USE check_stop  ,    ONLY : check_stop_init
   USE control_flags,   ONLY : io_level, gamma_only, use_para_diag
   USE mp_global,       ONLY : mp_startup, nproc_pool_file
@@ -58,7 +58,7 @@ PROGRAM optic_main
 
   include 'laxlib.fh'
 
-  CHARACTER (LEN=9)   :: code = 'optic'
+  CHARACTER (LEN=9)   :: code = 'orbm'
   CHARACTER (LEN=10)  :: dirname = 'dummy'
   LOGICAL, EXTERNAL  :: check_para_diag
   !------------------------------------------------------------------------
@@ -78,13 +78,13 @@ PROGRAM optic_main
 
 
   write(stdout,*)
-  write(stdout,'(5X,''***** This is optic git revision '',A,'' *****'')') 'beta version'
+  write(stdout,'(5X,''***** This is orbm git revision '',A,'' *****'')') 'beta version'
   write(stdout,'(5X,''***** you can cite: N. Varini et al., Comp. Phys. Comm. 184, 1827 (2013)  *****'')')
   write(stdout,'(5X,''***** in publications or presentations arising from this work.            *****'')')
   write(stdout,*)
  
 
-  call optic_readin()
+  call orbm_readin()
   call check_stop_init( max_seconds )
 
   io_level = 1
@@ -97,19 +97,19 @@ PROGRAM optic_main
   use_para_diag = .false.
 #endif
 
-  call optic_openfil
+  call orbm_openfil
 
-  if (gamma_only) call errore ('optic_main', 'Cannot run optic with gamma_only == .true. ', 1)
-  if (okvan) call errore('optic_main', 'USPP not supported yet', 1)
+  if (gamma_only) call errore ('orbm_main', 'Cannot run orbm with gamma_only == .true. ', 1)
+  if (okvan) call errore('orbm_main', 'USPP not supported yet', 1)
 
   nat_ = nat
   ntyp_ = ntyp
   ibrav_ = ibrav
   assume_isolated_ = 'none'
 
-  call optic_allocate()
-  call optic_setup()
-  call optic_summary()
+  call orbm_allocate()
+  call orbm_setup()
+  call orbm_summary()
   
   ! convert q_gipaw into units of tpiba
   q_gipaw = q_gipaw / tpiba
@@ -117,15 +117,15 @@ PROGRAM optic_main
 
   ! calculation
   
-  call orbm
+  call calc_orb_magnetization
   
   ! print timings and stop the code
-  call optic_closefil
-  call print_clock_optic
+  call orbm_closefil
+  call print_clock_orbm
   call environment_end(code)
   call stop_code( .true. )
   
   STOP
   
-END PROGRAM optic_main
+END PROGRAM orbm_main
 

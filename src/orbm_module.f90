@@ -6,7 +6,7 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 !-----------------------------------------------------------------------
-MODULE optic_module
+MODULE orbm_module
   !-----------------------------------------------------------------------
   !
   ! ... This module contains the variables used for GIPAW calculations
@@ -65,5 +65,5 @@ MODULE optic_module
   
 
 !-----------------------------------------------------------------------
-END MODULE optic_module
+END MODULE orbm_module
 !-----------------------------------------------------------------------

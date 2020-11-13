@@ -32,7 +32,7 @@ SUBROUTINE greenfunction(ik, psi, g_psi)
   USE cell_base,                   ONLY : tpiba
   USE klist,                       ONLY : lgauss, xk, degauss, ngauss, igk_k, ngk
   USE noncollin_module,            ONLY : noncolin, npol
-  USE optic_module
+  USE orbm_module
 
   !-- parameters ---------------------------------------------------------
   IMPLICIT none

@@ -6,7 +6,7 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 !-----------------------------------------------------------------------
-SUBROUTINE orbm
+SUBROUTINE calc_orb_magnetization
   !-----------------------------------------------------------------------
   !
   ! This routine calculates the orbital magnetization using the modern theory
@@ -36,7 +36,7 @@ SUBROUTINE orbm
   USE gvecw,                  ONLY : gcutw
   USE lsda_mod,               ONLY : lsda, current_spin, isk
   USE becmod,                 ONLY : becp, calbec, allocate_bec_type, deallocate_bec_type
-  USE optic_module,           ONLY : q_gipaw, iverbosity, alpha, &
+  USE orbm_module,           ONLY : q_gipaw, iverbosity, alpha, &
                                      nbnd_occ, conv_threshold, restart_mode, ry2ha
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
@@ -70,7 +70,7 @@ SUBROUTINE orbm
   mic = 0.d0
   berry=0.d0
  
-  call start_clock('orbm')
+  call start_clock('calc_orb_magnetization')
   !-----------------------------------------------------------------------
   ! allocate memory
   !-----------------------------------------------------------------------
@@ -78,7 +78,7 @@ SUBROUTINE orbm
   allocate ( aux(npwx*npol,nbnd),  hpsi(npwx*npol) )
 
   ! print memory estimate
-  call optic_memory_report
+  call orbm_memory_report
 
   write(stdout, '(5X,''Computing the orbital magnetization (bohr mag/cell):'',$)')
   write(stdout, '(5X,''ethr='',E12.4)') conv_threshold
@@ -92,10 +92,10 @@ SUBROUTINE orbm
 #ifdef __MPI
     if (me_pool == root_pool) &
     write(*, '(5X,''k-point #'',I5,'' of '',I5,6X,''pool #'',I3,4X,''cpu time:'',F10.1)') &
-      ik, nks, my_pool_id+1, get_clock('optic')
+      ik, nks, my_pool_id+1, get_clock('orbm')
 #else
     write(stdout, '(5X,''k-point #'',I5,'' of '',I5,4X,''cpu time:'',F10.1)') &
-      ik, nks, get_clock('optic')
+      ik, nks, get_clock('orbm')
 #endif
 
     ! initialize k, spin, g2kin used in h_psi    
@@ -179,6 +179,6 @@ SUBROUTINE orbm
 
   
   !call restart_cleanup ( )
-  call stop_clock('orbm')
+  call stop_clock('calc_orb_magnetization')
 
-END SUBROUTINE orbm
+END SUBROUTINE calc_orb_magnetization

@@ -10,11 +10,11 @@ MODFLAGS = $(MOD_FLAG)$(QE_SOURCE)/iotk/src $(MOD_FLAG)$(QE_SOURCE)/Modules \
            $(MOD_FLAG)$(QE_SOURCE)/PW/src $(MOD_FLAG)$(QE_SOURCE)/upflib \
            $(MOD_FLAG)$(QE_SOURCE)/UtilXlib $(MOD_FLAG).
 
-GIPAW_OBJS = optic_module.o optic_main.o stop_code.o optic_setup.o \
-	     optic_routines.o greenfunction.o \
+GIPAW_OBJS = orbm_module.o orbm_main.o stop_code.o orbm_setup.o \
+	     orbm_routines.o greenfunction.o \
 	     cgsolve_all.o cg_psi.o ch_psi_all.o \
 	     init_us_2_no_phase.o \
-	     velocity.o orbm.o 
+	     velocity.o calc_orb_magnetization.o 
 
 LIBOBJS = $(QE_SOURCE)/clib/clib.a $(QE_SOURCE)/iotk/src/libiotk.a
 QEMODS = $(QE_SOURCE)/Modules/libqemod.a \
@@ -25,15 +25,15 @@ QEMODS = $(QE_SOURCE)/Modules/libqemod.a \
          $(QE_SOURCE)/upflib/libupf.a
 PWOBJS = $(QE_SOURCE)/PW/src/libpw.a
 
-all: optic.x
+all: orbm.x
 
 
-optic.x: $(GIPAW_OBJS) $(PWOBJS) $(QEMODS) $(LIBOBJS)
+orbm.x: $(GIPAW_OBJS) $(PWOBJS) $(QEMODS) $(LIBOBJS)
 	$(LD) $(LDFLAGS) -o $@ $(GIPAW_OBJS) $(PWOBJS) $(QEMODS) $(LIBOBJS) $(QELIBS)
-	(cd ../bin; ln -sf ../src/optic.x .)
+	(cd ../bin; ln -sf ../src/orbm.x .)
 
 clean:
-	-/bin/rm -f optic.x *.o *.F90 *__genmod.f90 *.d *.mod *.i *.L
+	-/bin/rm -f orbm.x *.o *.F90 *__genmod.f90 *.d *.mod *.i *.L
 
 distclean: clean
 	-/bin/rm -f Makefile make.depend
