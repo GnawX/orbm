@@ -43,7 +43,7 @@ MODULE orbm_module
   REAL(DP) :: conv_threshold
   
   ! q for the perturbation (in bohrradius^{-1})
-  REAL(DP) :: q_gipaw
+  REAL(DP) :: q_orbm
   
 
   ! restart mode: 'from_scratch' or 'restart'

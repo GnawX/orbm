@@ -29,7 +29,7 @@ PROGRAM orbm_main
   USE kinds,           ONLY : DP
   USE mp,              ONLY : mp_bcast
   USE cell_base,       ONLY : tpiba
-  USE orbm_module,    ONLY : job, q_gipaw, max_seconds
+  USE orbm_module,    ONLY : job, q_orbm, max_seconds
   USE check_stop  ,    ONLY : check_stop_init
   USE control_flags,   ONLY : io_level, gamma_only, use_para_diag
   USE mp_global,       ONLY : mp_startup, nproc_pool_file
@@ -111,8 +111,8 @@ PROGRAM orbm_main
   call orbm_setup()
   call orbm_summary()
   
-  ! convert q_gipaw into units of tpiba
-  q_gipaw = q_gipaw / tpiba
+  ! convert q_orbm into units of tpiba
+  q_orbm = q_orbm / tpiba
   
 
   ! calculation

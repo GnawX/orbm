@@ -36,7 +36,7 @@ SUBROUTINE calc_orb_magnetization
   USE gvecw,                  ONLY : gcutw
   USE lsda_mod,               ONLY : lsda, current_spin, isk
   USE becmod,                 ONLY : becp, calbec, allocate_bec_type, deallocate_bec_type
-  USE orbm_module,           ONLY : q_gipaw, iverbosity, alpha, &
+  USE orbm_module,           ONLY : q_orbm, iverbosity, alpha, &
                                      nbnd_occ, conv_threshold, restart_mode, ry2ha
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &

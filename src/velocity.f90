@@ -71,7 +71,7 @@ SUBROUTINE apply_vel_NL(psi, vel_psi, ik, ipol)
   USE becmod,               ONLY : becp, calbec, allocate_bec_type, deallocate_bec_type
   USE uspp,                 ONLY : nkb, vkb
   USE cell_base,            ONLY : tpiba
-  USE orbm_module,         ONLY : q_gipaw, nbnd_occ
+  USE orbm_module,         ONLY : q_orbm, nbnd_occ
   USE lsda_mod,             ONLY : current_spin, lsda, isk, nspin
   USE noncollin_module,     ONLY : noncolin, npol
 
@@ -93,7 +93,7 @@ SUBROUTINE apply_vel_NL(psi, vel_psi, ik, ipol)
   if (nkb == 0) return
 
   ! set dk
-  dk = q_gipaw/2.d0
+  dk = q_orbm/2.d0
 
 
   ! initialization

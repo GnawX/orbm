@@ -10,8 +10,8 @@
 SUBROUTINE orbm_readin()
   !-----------------------------------------------------------------------
   !
-  ! ... Read in the gipaw input file. The input file consists of a
-  ! ... single namelist &inputgipaw. See doc/user-manual.pdf for the
+  ! ... Read in the orbm input file. The input file consists of a
+  ! ... single namelist &inputorbm. See doc/user-manual.pdf for the
   ! ... list of input keywords.
   !
   USE orbm_module
@@ -26,7 +26,7 @@ SUBROUTINE orbm_readin()
   character(len=256), external :: trimcheck
   character(len=80) :: diagonalization, verbosity
   namelist /inputorbm/ job, prefix, tmp_dir, conv_threshold, restart_mode, &
-                        q_gipaw, iverbosity,  &
+                        q_orbm, iverbosity,  &
                         spline_ps, isolve, max_seconds, verbosity
                         
 
@@ -42,7 +42,7 @@ SUBROUTINE orbm_readin()
   prefix = 'pwscf'
   restart_mode = 'restart'
   conv_threshold = 1d-14
-  q_gipaw = 0.01d0
+  q_orbm = 0.01d0
   iverbosity = -1
   verbosity = 'low'
   spline_ps = .true.
@@ -101,7 +101,7 @@ SUBROUTINE orbm_bcast_input
   call mp_bcast(prefix, root, world_comm)
   call mp_bcast(tmp_dir, root, world_comm)
   call mp_bcast(conv_threshold, root, world_comm)
-  call mp_bcast(q_gipaw, root, world_comm)
+  call mp_bcast(q_orbm, root, world_comm)
   call mp_bcast(iverbosity, root, world_comm)
   call mp_bcast(spline_ps, root, world_comm)
   call mp_bcast(isolve, root, world_comm)
