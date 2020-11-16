@@ -1,4 +1,4 @@
-SUBROUTINE poolcollect( length, nks, f_in, nkstot, f_out )
+SUBROUTINE poolcollect_z( length, nks, f_in, nkstot, f_out )
   !----------------------------------------------------------------------------
   !! Collects a real array f_in, distributed across pools, from all pools,
   !! into a real array f_out.
@@ -23,9 +23,9 @@ SUBROUTINE poolcollect( length, nks, f_in, nkstot, f_out )
   !! number of k-points per pool
   INTEGER, INTENT(IN) :: nkstot
   !! total number of k-points
-  REAL(DP), INTENT(IN) :: f_in(length,nks)
+  COMPLEX(DP), INTENT(IN) :: f_in(length,length,nks,3)
   !! pool-distributed function
-  REAL(DP), INTENT(OUT) :: f_out(length,nkstot)
+  COMPLEX(DP), INTENT(OUT) :: f_out(length,length,nkstot,3)
   !! pool-collected function
   !
   ! ... local variables
@@ -49,12 +49,12 @@ SUBROUTINE poolcollect( length, nks, f_in, nkstot, f_out )
   !
   ! copy the original points in the correct position of the list
   !
-  f_out = 0.0_DP
-  f_out(:,nbase+1:nbase+nks) = f_in(:,1:nks)
+  f_out = (0.0_DP, 0.0_DP)
+  f_out(:,:,nbase+1:nbase+nks,:) = f_in(:,:,1:nks,:)
   !
   CALL mp_sum( f_out, inter_pool_comm )
   !
   !
   RETURN
   !
-END SUBROUTINE poolcollect
+END SUBROUTINE poolcollect_z
