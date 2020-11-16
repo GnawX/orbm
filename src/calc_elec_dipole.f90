@@ -46,7 +46,7 @@ SUBROUTINE calc_elec_dipole
   ! temporary working array, same size as evc/evq
   complex(dp), allocatable :: aux(:,:)
   complex(dp), allocatable :: hpsi(:)
-  real(dp) :: de_thr = 1.0d-7
+  real(dp) :: de_thr = 1.0d-5
 
   integer :: ik, ios, iunout
   integer :: i, ibnd, jbnd, ii, jj
@@ -70,7 +70,7 @@ SUBROUTINE calc_elec_dipole
   call orbm_memory_report
 
   write(stdout, '(5X,''Computing the electric dipole matrix (e bohr):'',$)')
-  write(stdout)
+  write(stdout, *)
 
 
   !====================================================================

@@ -14,7 +14,7 @@ subroutine init_us_2_no_phase (npw_, igk_, q_, vkb_)
   !   structure factor, for all atoms, in reciprocal space
   !
   USE kinds,      ONLY : DP
-  USE ions_base,  ONLY : nat, ntyp => nsp, ityp
+  USE ions_base,  ONLY : nat, ntyp => nsp, ityp, tau
   USE cell_base,  ONLY : tpiba
   USE constants,  ONLY : tpi
   USE gvect,      ONLY : eigts1, eigts2, eigts3, mill, g
@@ -38,10 +38,10 @@ subroutine init_us_2_no_phase (npw_, igk_, q_, vkb_)
   !
   integer :: i0,i1,i2,i3, ig, l, lm, na, nt, nb, ih, jkb
 
-  real(DP) :: px, ux, vx, wx
+  real(DP) :: px, ux, vx, wx, arg
   real(DP), allocatable :: gk (:,:), qg (:), vq (:), ylm (:,:), vkb1(:,:)
 
-  complex(DP) :: pref
+  complex(DP) :: pref, phase
   complex(DP), allocatable :: sk(:)
 
   real(DP), allocatable :: xdata(:)
@@ -138,7 +138,7 @@ subroutine init_us_2_no_phase (npw_, igk_, q_, vkb_)
            enddo
            do ih = 1, nh (nt)
               jkb = jkb + 1
-              pref = (0.d0, -1.d0) **nhtol (ih, nt)! * phase
+              pref = (0.d0, -1.d0) **nhtol (ih, nt) !* phase
               do ig = 1, npw_
                   vkb_(ig, jkb) = vkb1 (ig,ih) * sk (ig) * pref
               enddo
