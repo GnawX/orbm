@@ -44,7 +44,8 @@ SUBROUTINE apply_p(psi, p_psi, ik, ipol)
   npw = ngk(ik)
   gk(1:npw) = (xk(ipol,ik)+g(ipol,igk_k(1:npw,ik)))*tpiba
   
-  do ibnd = 1, nbnd_occ(ik)
+  !do ibnd = 1, nbnd_occ(ik)
+  do ibnd = 1, nbnd
     p_psi(1:npw,ibnd) = p_psi(1:npw,ibnd) + gk(1:npw)*psi(1:npw,ibnd)
     if (noncolin) then
       p_psi(npwx+1:npwx+npw,ibnd) = p_psi(npwx+1:npwx+npw,ibnd) + &
@@ -117,15 +118,18 @@ SUBROUTINE apply_vel_NL(psi, vel_psi, ik, ipol)
 
       ! compute <\beta(k \pm dk)| and project on |psi>
       call init_us_2_no_phase(npw, igk_k(1,ik), dxk, vkb)
-      call allocate_bec_type(nkb, nbnd_occ(ik), becp)
+      !call allocate_bec_type(nkb, nbnd_occ(ik), becp)
+      call allocate_bec_type(nkb, nbnd, becp)
 
-      call calbec (npw, vkb, psi, becp, nbnd_occ(ik))
+      !call calbec (npw, vkb, psi, becp, nbnd_occ(ik))
+      call calbec (npw, vkb, psi, becp, nbnd)
 
       aux = (0.d0,0.d0)
       
       ! apply |\beta(k \pm dk+q)>D<\beta(k \pm dk)| to |psi>
 
-      call add_vuspsi(npwx, npw, nbnd_occ(ik), aux)
+      !call add_vuspsi(npwx, npw, nbnd_occ(ik), aux)
+      call add_vuspsi(npwx, npw, nbnd, aux)
       call deallocate_bec_type(becp)
 
       vel_psi = vel_psi + dble(isign) * ryd_to_hartree * aux/(2.d0*dk*tpiba)
