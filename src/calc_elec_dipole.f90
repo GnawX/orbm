@@ -17,7 +17,7 @@ SUBROUTINE calc_elec_dipole
   USE io_files,               ONLY : nwordwfc, iunwfc
   USE cell_base,              ONLY : tpiba2
   USE wavefunctions,          ONLY : evc
-  USE noncollin_module,       ONLY : npol
+  USE noncollin_module,       ONLY : npol, noncolin
   USE klist,                  ONLY : nks, wk, xk, igk_k, ngk, nkstot
   USE wvfct,                  ONLY : nbnd, npwx, wg, g2kin, current_k,et
   USE ener,                   ONLY : ef
@@ -31,7 +31,8 @@ SUBROUTINE calc_elec_dipole
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm, npool
-  USE mp,                     ONLY : mp_sum
+  USE mp,                     ONLY : mp_sum, mp_bcast
+  USE mp_world,               ONLY : world_comm
 
   !-- local variables ----------------------------------------------------
   IMPLICIT NONE
@@ -69,6 +70,7 @@ SUBROUTINE calc_elec_dipole
   call orbm_memory_report
 
   write(stdout, '(5X,''Computing the electric dipole matrix (e bohr):'',$)')
+  write(stdout)
 
 
   !====================================================================
@@ -148,7 +150,7 @@ SUBROUTINE calc_elec_dipole
   
   ios = 0
   if ( ionode ) then
-     iunout = find_free_unit
+     iunout = find_free_unit( )
      open (unit = iunout, file = 'edipole', status = 'unknown', form = &
           'unformatted', iostat = ios)
      rewind (iunout)
@@ -169,7 +171,7 @@ SUBROUTINE calc_elec_dipole
   write(stdout,*)
   write(stdout,'(5X,''End of electric dipole calculation'')')
   write(stdout,*)
-  write(stdout,'(5X,A) 'Matrix elements dumped in edipole'
+  write(stdout,'(5X,''Matrix elements dumped in edipole'')')
   write(stdout,*)
 
   ! free memory as soon as possible
