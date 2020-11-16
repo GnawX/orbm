@@ -9,18 +9,8 @@
 SUBROUTINE calc_elec_dipole
   !-----------------------------------------------------------------------
   !
-  ! This routine calculates the orbital magnetization using the modern theory
-  ! of orbital magnetization.
-  !  m = \alpha/2 Im \sum_nk <d u_nk| \times (H+E-2\mu) |d u_nk>
-  ! References:
-  !   [1] Phys. Rev. B 63, 245101 (2001)       (norm-conserving GIPAW)
-  !   [2] Phys. Rev. B 76, 024401 (2007)       (ultrasoft)
-  !   [3] Phys. Rev. B 76, 165122 (2007)       (metallic systems)
-  !   [4] Phys. Rev. Lett. 88, 086403 (2002)   (EPR g-tensor)
-  ! Contributors:
-  !   D. Ceresoli                        bare susceptibility and current
-  !   A. P. Seitsonen and U. Gerstmann   GIPAW contributions
-  !   E. Kucukbenli                      Ultrasoft and PAW
+  ! This routine calculates the electric transition dipole matrix
+  !                         - <n|r|m>
   !
   USE kinds,                  ONLY : dp
   USE io_global,              ONLY : stdout, ionode, ionode_id
@@ -147,6 +137,8 @@ SUBROUTINE calc_elec_dipole
        enddo
     enddo
   enddo ! ik
+  
+  rmat_ = rmat_*(-1.0_DP)
 
   if ( npool == 1 ) then
      rmat = rmat_
