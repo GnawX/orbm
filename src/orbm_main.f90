@@ -116,8 +116,18 @@ PROGRAM orbm_main
   
 
   ! calculation
-  
-  call calc_orb_magnetization
+  select case ( trim(job) )
+  case ( 'orbm' )
+     call calc_orb_magnetization 
+  case ( 'elec_dipole' )
+     call calc_elec_dipole
+  case ( 'mag_dipole' )
+     !call calc_mag_dipole
+  case ( 'elec_quadrupole' )
+     !call calc_elec_quadrupole
+  case default
+     call errore('orbm_main', 'wrong or undefined job in input', 1)
+  end select
   
   ! print timings and stop the code
   call orbm_closefil
