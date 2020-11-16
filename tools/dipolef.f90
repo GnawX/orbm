@@ -1,0 +1,2 @@
+PROGRAM dipolef
+END PROGRAM
