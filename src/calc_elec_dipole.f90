@@ -23,7 +23,7 @@ SUBROUTINE calc_elec_dipole
   !   E. Kucukbenli                      Ultrasoft and PAW
   !
   USE kinds,                  ONLY : dp
-  USE io_global,              ONLY : stdout
+  USE io_global,              ONLY : stdout, ionode, ionode_id
   USE io_files,               ONLY : nwordwfc, iunwfc
   USE cell_base,              ONLY : tpiba2
   USE wavefunctions,          ONLY : evc
@@ -34,13 +34,13 @@ SUBROUTINE calc_elec_dipole
   USE uspp,                   ONLY : nkb, vkb
   USE gvect,                  ONLY : ngm, g
   USE gvecw,                  ONLY : gcutw
-  USE lsda_mod,               ONLY : lsda, current_spin, isk
+  USE lsda_mod,               ONLY : lsda, current_spin, isk, nspin
   USE becmod,                 ONLY : becp, calbec, allocate_bec_type, deallocate_bec_type
-  USE orbm_module,           ONLY : q_orbm, iverbosity, alpha, &
+  USE orbm_module,            ONLY : q_orbm, iverbosity, alpha, &
                                      nbnd_occ, conv_threshold, restart_mode, ry2ha
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
-                                     inter_pool_comm, intra_pool_comm
+                                     inter_pool_comm, intra_pool_comm, npool
   USE mp,                     ONLY : mp_sum
 
   !-- local variables ----------------------------------------------------
@@ -56,23 +56,16 @@ SUBROUTINE calc_elec_dipole
   complex(dp), allocatable :: aux(:,:)
   complex(dp), allocatable :: hpsi(:)
   real(dp) :: de_thr = 1.0d-7
-  real(dp) :: berry(3), mlc(3), mic(3), morb(3)
 
-  integer :: ik
+  integer :: ik, ios, iunout
   integer :: i, ibnd, jbnd, ii, jj
   real(dp) :: q(3)
   complex(dp) :: braket
   complex(dp), external :: zdotc
   real(dp), external :: get_clock
+  integer, external :: find_free_unit
   integer :: npw
-  integer :: ind(2,3)
-  
-  ind(:,1) = (/ 2, 3 /)
-  ind(:,2) = (/ 3, 1 /)
-  ind(:,3) = (/ 1, 2 /)
-  mlc = 0.d0
-  mic = 0.d0
-  berry=0.d0
+
  
   call start_clock('calc_elec_dipole')
   !-----------------------------------------------------------------------
@@ -161,7 +154,22 @@ SUBROUTINE calc_elec_dipole
      call poolcollect_z( nbnd, nks, rmat_, nkstot, rmat)
   endif
   
-  
+  ios = 0
+  if ( ionode ) then
+     iunout = find_free_unit
+     open (unit = iunout, file = 'edipole', status = 'unknown', form = &
+          'unformatted', iostat = ios)
+     rewind (iunout)
+  endif
+
+  call mp_bcast (ios, ionode_id, world_comm)
+  if ( ios/=0 ) call errore ('calc_elec_dipole', 'Opening file edipole', abs (ios) )
+
+  if (ionode) then
+     write(iunout) nbnd, nkstot, nspin
+     write(iunout) rmat
+     close(iunout)
+  endif
   
   !====================================================================
   ! print out results
@@ -169,16 +177,14 @@ SUBROUTINE calc_elec_dipole
   write(stdout,*)
   write(stdout,'(5X,''End of electric dipole calculation'')')
   write(stdout,*)
-  write(stdout,'(5X,''M_tot             = '',3(F14.6))') morb
-  write(stdout,'(5X,''M_LC              = '',3(F14.6))') mlc
-  write(stdout,'(5X,''M_IC              = '',3(F14.6))') mic
+  write(stdout,'(5X,A) 'Matrix elements dumped in edipole'
   write(stdout,*)
 
   ! free memory as soon as possible
-  deallocate( vel_evc, aux, evc1, hpsi )
+  deallocate( vel_evc, aux, evc1, hpsi, ps, rmat, rmat_ )
 
   
   !call restart_cleanup ( )
-  call stop_clock('calc_orb_magnetization')
+  call stop_clock('calc_elec_dipole')
 
 END SUBROUTINE calc_elec_dipole
