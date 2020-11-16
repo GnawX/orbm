@@ -24,10 +24,8 @@ SUBROUTINE calc_elec_dipole
   USE uspp,                   ONLY : nkb, vkb
   USE gvect,                  ONLY : ngm, g
   USE gvecw,                  ONLY : gcutw
-  USE lsda_mod,               ONLY : lsda, current_spin, isk, nspin
-  USE becmod,                 ONLY : becp, calbec, allocate_bec_type, deallocate_bec_type
-  USE orbm_module,            ONLY : q_orbm, iverbosity, alpha, &
-                                     nbnd_occ, conv_threshold, restart_mode, ry2ha
+  USE lsda_mod,               ONLY : nspin
+  USE orbm_module,            ONLY : ry2ha
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm, npool
@@ -39,20 +37,13 @@ SUBROUTINE calc_elec_dipole
 
   ! the following three quantities are for norm-conserving PPs
   complex(dp), allocatable, dimension(:,:,:) :: vel_evc       ! v_{k,k}|evc>
-  complex(dp), allocatable, dimension(:,:,:) :: evc1          ! du/dk
   complex(dp), allocatable, dimension(:,:,:,:) :: rmat_          ! 
   complex(dp), allocatable, dimension(:,:,:,:) :: rmat          !
   complex(dp), allocatable, dimension(:,:,:) :: ps            ! <n|v|m> 
-  ! temporary working array, same size as evc/evq
-  complex(dp), allocatable :: aux(:,:)
-  complex(dp), allocatable :: hpsi(:)
-  real(dp) :: de_thr = 1.0d-7
+  real(dp) :: de_thr = 1.0d-5
 
   integer :: ik, ios, iunout
-  integer :: i, ibnd, jbnd, ii, jj
-  real(dp) :: q(3)
-  complex(dp) :: braket
-  complex(dp), external :: zdotc
+  integer :: i, ibnd, jbnd
   real(dp), external :: get_clock
   integer, external :: find_free_unit
   integer :: npw
@@ -62,9 +53,8 @@ SUBROUTINE calc_elec_dipole
   !-----------------------------------------------------------------------
   ! allocate memory
   !-----------------------------------------------------------------------
-  allocate ( vel_evc(npwx*npol,nbnd,3), evc1(npwx*npol,nbnd,3),ps(nbnd, nbnd, 3))
+  allocate ( vel_evc(npwx*npol,nbnd,3), ps(nbnd, nbnd, 3))
   allocate ( rmat(nbnd,nbnd,nkstot,3),  rmat_(nbnd,nbnd, nks, 3) )
-  allocate ( aux(npwx*npol,nbnd),  hpsi(npwx*npol) )
 
   ! print memory estimate
   call orbm_memory_report
@@ -86,14 +76,6 @@ SUBROUTINE calc_elec_dipole
     write(stdout, '(5X,''k-point #'',I5,'' of '',I5,4X,''cpu time:'',F10.1)') &
       ik, nks, get_clock('orbm')
 #endif
-
-    ! initialize k, spin, g2kin used in h_psi    
-    current_k = ik
-    if (lsda) current_spin = isk(ik)
-    npw = ngk(ik)
-    call gk_sort(xk(1,ik), ngm, g, gcutw, npw, igk_k(1,ik), g2kin)
-    g2kin(:) = g2kin(:) * tpiba2
-    call init_us_2(npw, igk_k(1,ik), xk(1,ik), vkb)
 
 
     ! read wfcs from file and compute becp
@@ -175,7 +157,7 @@ SUBROUTINE calc_elec_dipole
   write(stdout,*)
 
   ! free memory as soon as possible
-  deallocate( vel_evc, aux, evc1, hpsi, ps, rmat, rmat_ )
+  deallocate( vel_evc, ps, rmat, rmat_ )
 
   
   !call restart_cleanup ( )
