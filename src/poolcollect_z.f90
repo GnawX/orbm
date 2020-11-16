@@ -3,9 +3,9 @@ SUBROUTINE poolcollect_z( length, nks, f_in, nkstot, f_out )
   !! Collects a real array f_in, distributed across pools, from all pools,
   !! into a real array f_out.
   !
-  !! * On input: f_in(length,nks) contains data for the "nks" k-points
+  !! * On input: f_in(length,length,nks,3) contains data for the "nks" k-points
   !!   of the current pool, on all pools;
-  !! * On output: f_out(length,nkstot) contains data for all "nkstot" k-points
+  !! * On output: f_out(length,length,nkstot,3) contains data for all "nkstot" k-points
   !!   on all pools.
   !
   !! f_in and f_out must differ! Honors "kunit"
