@@ -49,14 +49,17 @@ SUBROUTINE calc_elec_dipole
   ! the following three quantities are for norm-conserving PPs
   complex(dp), allocatable, dimension(:,:,:) :: vel_evc       ! v_{k,k}|evc>
   complex(dp), allocatable, dimension(:,:,:) :: evc1          ! du/dk
-  complex(dp), allocatable, dimension(:,:,:) :: vmat          ! 
+  complex(dp), allocatable, dimension(:,:,:,:) :: rmat_          ! 
+  complex(dp), allocatable, dimension(:,:,:,:) :: rmat          !
+  complex(dp), allocatable, dimension(:,:,:) :: ps            ! <n|v|m> 
   ! temporary working array, same size as evc/evq
   complex(dp), allocatable :: aux(:,:)
   complex(dp), allocatable :: hpsi(:)
+  real(dp) :: de_thr = 1.0d-7
   real(dp) :: berry(3), mlc(3), mic(3), morb(3)
 
   integer :: ik
-  integer :: i, ibnd,  ii, jj
+  integer :: i, ibnd, jbnd, ii, jj
   real(dp) :: q(3)
   complex(dp) :: braket
   complex(dp), external :: zdotc
@@ -75,14 +78,14 @@ SUBROUTINE calc_elec_dipole
   !-----------------------------------------------------------------------
   ! allocate memory
   !-----------------------------------------------------------------------
-  allocate ( vel_evc(npwx*npol,nbnd,3), evc1(npwx*npol,nbnd,3) )
-  allocate ( vmat(3,nbnd,nbnd,nkstot) )
+  allocate ( vel_evc(npwx*npol,nbnd,3), evc1(npwx*npol,nbnd,3),ps(nbnd, nbnd, 3))
+  allocate ( rmat(nbnd,nbnd,nkstot,3),  rmat_(nbnd,nbnd, nks, 3) )
   allocate ( aux(npwx*npol,nbnd),  hpsi(npwx*npol) )
 
   ! print memory estimate
   call orbm_memory_report
 
-  write(stdout, '(5X,''Computing the electric transition dipole (e bohr):'',$)')
+  write(stdout, '(5X,''Computing the electric dipole matrix (e bohr):'',$)')
 
 
   !====================================================================
@@ -114,62 +117,57 @@ SUBROUTINE calc_elec_dipole
     
     ! calculate du/dk    
     vel_evc(:,:,:) = (0.d0,0.d0)
+    ps(:,:,:)= (0.d0,0.d0)
     do i = 1,3
        call apply_vel(evc, vel_evc(1,1,i), ik, i)
        !aux(:,:) = vel_evc(:,:,i)
        !call greenfunction(ik, aux, evc1(1,1,i))
        
-    enddo
-
+       ! calculate the velocity matrix ps(nbnd,nbnd)
+       if (noncolin) then
+     
+          CALL zgemm('C', 'N', nbnd, nbnd, npwx*npol, (1.d0,0.d0), evc(1,1), &
+                    npwx*npol, vel_evc(1,1,i), npwx*npol, (0.d0,0.d0), ps(1,1,i), nbnd)
+       else
        
-    call allocate_bec_type(nkb, nbnd, becp)
-
-    ! calculate orbital magnetization
-    ! loop over the bands
-    do ibnd = 1, nbnd_occ(ik)
-       do i = 1,3
-          ii = ind(1, i)
-          jj = ind(2, i)
-          ! IC term
-          braket = zdotc(npwx*npol, evc1(1,ibnd,ii), 1, evc1(1,ibnd,jj), 1)
-          mic(i) = mic(i) + 2.d0*wg(ibnd,ik)*et(ibnd,ik)*imag(braket)
-          berry(i) = berry(i) + 2.d0*wg(ibnd,ik)*imag(braket)
-          ! LC term
-          call h_psi(npwx, npw, 1, evc1(:,ibnd,jj), hpsi)
-          braket = zdotc(npwx*npol, evc1(1,ibnd,ii), 1, hpsi, 1)
-          mlc(i) = mlc(i) + wg(ibnd,ik)*imag(braket)
-          
-          call h_psi(npwx, npw, 1, evc1(:,ibnd,ii), hpsi)
-          braket = zdotc(npwx*npol, evc1(1,ibnd,jj), 1, hpsi, 1)
-          mlc(i) = mlc(i) - wg(ibnd,ik)*imag(braket)
-       enddo ! ipol
-    enddo ! ibnd
-    call deallocate_bec_type (becp)
+          CALL zgemm('C', 'N', nbnd, nbnd, npw, (1.d0,0.d0), evc(1,1), &
+                    npwx, vel_evc(1,1,i), npwx, (0.d0,0.d0), ps(1,1,i), nbnd)
+       endif
+       
+    enddo
+    
+#ifdef __MPI
+    call mp_sum(ps, intra_pool_comm)
+#endif 
+    
+    ! electric dipole matrix 
+    ! <n|r|m> = i\hbar <n|v|m> / (e_m - e_n)
+    
+    do ibnd = 1, nbnd
+       do jbnd = 1, nbnd
+          if ( abs(et(ibnd,ik)-et(jbnd,ik)) < de_thr )  then
+             rmat_(jbnd, ibnd, ik, :) = (0.d0,0.d0)
+          else
+             rmat_(jbnd, ibnd, ik, :) = ps(jbnd, ibnd, :)*(0.0_dp, 1.0_dp)/ & 
+                                (et(ibnd,ik) - et(jbnd,ik))/ry2ha
+          endif
+       enddo
+    enddo
   enddo ! ik
 
-#ifdef __MPI
-  ! reduce over G-vectors
-  call mp_sum( mlc, intra_pool_comm )
-  call mp_sum( mic, intra_pool_comm )
-  call mp_sum( berry, intra_pool_comm )
-  ! reduce over k-point pools
-  call mp_sum( mlc, inter_pool_comm )
-  call mp_sum( mic, inter_pool_comm )
-  call mp_sum( berry, inter_pool_comm )
-#endif
+  if ( npool == 1 ) then
+     rmat = rmat_
+  else
+     call poolcollect_z( nbnd, nks, rmat_, nkstot, rmat)
+  endif
   
-  mlc = ( mlc - ef*berry )*ry2ha
-  mic = ( mic - ef*berry )*ry2ha
-  morb = mlc + mic ! Borh mag
-  ! in AU, Bohr magnetron is 1/2
-
   
   
   !====================================================================
   ! print out results
   !====================================================================
   write(stdout,*)
-  write(stdout,'(5X,''End of orbital magnetization calculation'')')
+  write(stdout,'(5X,''End of electric dipole calculation'')')
   write(stdout,*)
   write(stdout,'(5X,''M_tot             = '',3(F14.6))') morb
   write(stdout,'(5X,''M_LC              = '',3(F14.6))') mlc
