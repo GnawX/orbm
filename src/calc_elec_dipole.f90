@@ -20,7 +20,7 @@ SUBROUTINE calc_elec_dipole
   USE klist,                  ONLY : nks, nkstot, ngk
   USE wvfct,                  ONLY : nbnd, npwx, et
   USE lsda_mod,               ONLY : nspin
-  USE orbm_module,            ONLY : ry2ha
+  USE orbm_module,            ONLY : ry2ha, ci
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm, npool
@@ -111,7 +111,7 @@ SUBROUTINE calc_elec_dipole
           if ( abs(et(ibnd,ik)-et(jbnd,ik)) < de_thr )  then
              rmat_(jbnd, ibnd, ik, :) = (0.d0,0.d0)
           else
-             rmat_(jbnd, ibnd, ik, :) = ps(jbnd, ibnd, :)*(0.0_dp, 1.0_dp)/ & 
+             rmat_(jbnd, ibnd, ik, :) = ps(jbnd, ibnd, :)*ci/ & 
                                 (et(ibnd,ik) - et(jbnd,ik))/ry2ha
           endif
        enddo
