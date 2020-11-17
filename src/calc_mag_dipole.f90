@@ -10,8 +10,8 @@ SUBROUTINE calc_mag_dipole
   !-----------------------------------------------------------------------
   !
   ! This routine calculates the magnetic transition dipole matrix
-  !    i/2 ( <dn|\times v|m> + <n|v \times|dm> )
-  !
+  !    i/2 ( <dn|\times v|m> + <n|v \times|dm> ) in AU
+  ! 
   USE kinds,                  ONLY : dp
   USE io_global,              ONLY : stdout, ionode, ionode_id
   USE io_files,               ONLY : nwordwfc, iunwfc
@@ -41,7 +41,8 @@ SUBROUTINE calc_mag_dipole
   complex(dp), allocatable :: aux(:,:)
   complex(dp), allocatable, dimension(:,:,:,:) :: ps 
   complex(dp), allocatable, dimension(:,:,:) :: ps1
-  real(dp) :: de_thr = 1.0d-5
+  complex(dp), allocatable, dimension(:,:,:,:) :: ps2
+  complex(dp), allocatable, dimension(:,:,:,:) :: mmat
 
   integer :: ik, ios, iunout
   integer :: i, j, ibnd, jbnd
@@ -55,8 +56,8 @@ SUBROUTINE calc_mag_dipole
   ! allocate memory
   !-----------------------------------------------------------------------
   allocate ( vel_evc(npwx*npol,nbnd,3), evc1(npwx*npol,nbnd,3) )
-  allocate ( ps(nbnd,nbnd,3,3),  ps1(nbnd,nbnd,3) )
-  allocate ( aux(npwx*npol, nbnd) )
+  allocate ( ps(nbnd,nbnd,3,3),  ps1(nbnd,nbnd,3), ps2(nbnd,nbnd,nks,3) )
+  allocate ( aux(npwx*npol, nbnd), mmat(nbnd,nbnd,nkstot,3) )
 
   ! print memory estimate
   call orbm_memory_report
@@ -93,7 +94,8 @@ SUBROUTINE calc_mag_dipole
     
     ! calculate du/dk    
     vel_evc(:,:,:) = (0.d0,0.d0)
-    ps(:,:,:)= (0.d0,0.d0)
+    ps(:,:,:,:)= (0.d0,0.d0)
+    ps1(:,:,:)= (0.d0,0.d0)
     
     do i = 1,3
     
@@ -126,44 +128,33 @@ SUBROUTINE calc_mag_dipole
     ps1(:,:,2) = ps(:,:,3,1) - ps(:,:,1,3)
     ps1(:,:,3) = ps(:,:,1,2) - ps(:,:,2,1)
     
-    
-    ! electric dipole matrix 
-    ! <n|r|m> = i\hbar <n|v|m> / (e_m - e_n)
-    
     do ibnd = 1, nbnd
        do jbnd = 1, nbnd
-          if ( abs(et(ibnd,ik)-et(jbnd,ik)) < de_thr )  then
-             rmat_(jbnd, ibnd, ik, :) = (0.d0,0.d0)
-          else
-             rmat_(jbnd, ibnd, ik, :) = ps(jbnd, ibnd, :)*ci/ & 
-                                (et(ibnd,ik) - et(jbnd,ik))/ry2ha
-          endif
-       enddo
-    enddo
-  enddo ! ik
-  
-  rmat_ = rmat_*(-1.0_DP)
+          ps2(jbnd,ibnd,ik,:) = (ps1(jbnd,ibnd,:) - CONJG(ps1(ibnd,jbnd,:)))*ci
+       endo
+    endo
+    
 
   if ( npool == 1 ) then
-     rmat = rmat_
+     mmat = ps2
   else
-     call poolcollect_z( nbnd, nks, rmat_, nkstot, rmat)
+     call poolcollect_z( nbnd, nks, ps2, nkstot, mmat)
   endif
   
   ios = 0
   if ( ionode ) then
      iunout = find_free_unit( )
-     open (unit = iunout, file = 'edipole', status = 'unknown', form = &
+     open (unit = iunout, file = 'mdipole', status = 'unknown', form = &
           'unformatted', iostat = ios)
      rewind (iunout)
   endif
 
   call mp_bcast (ios, ionode_id, world_comm)
-  if ( ios/=0 ) call errore ('calc_elec_dipole', 'Opening file edipole', abs (ios) )
+  if ( ios/=0 ) call errore ('calc_mag_dipole', 'Opening file mdipole', abs (ios) )
 
   if (ionode) then
      write(iunout) nbnd, nkstot, nspin
-     write(iunout) rmat
+     write(iunout) mmat
      close(iunout)
   endif
   
@@ -171,13 +162,13 @@ SUBROUTINE calc_mag_dipole
   ! print out results
   !====================================================================
   write(stdout,*)
-  write(stdout,'(5X,''End of electric dipole calculation'')')
+  write(stdout,'(5X,''End of magnetic dipole calculation'')')
   write(stdout,*)
-  write(stdout,'(5X,''Matrix elements dumped in edipole'')')
+  write(stdout,'(5X,''Matrix elements dumped in mdipole'')')
   write(stdout,*)
 
   ! free memory as soon as possible
-  deallocate( vel_evc, ps, rmat, rmat_ )
+  deallocate( vel_evc, evc1, aux, ps, ps1, ps2, mmat )
 
   
   !call restart_cleanup ( )
