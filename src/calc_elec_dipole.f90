@@ -15,15 +15,10 @@ SUBROUTINE calc_elec_dipole
   USE kinds,                  ONLY : dp
   USE io_global,              ONLY : stdout, ionode, ionode_id
   USE io_files,               ONLY : nwordwfc, iunwfc
-  USE cell_base,              ONLY : tpiba2
   USE wavefunctions,          ONLY : evc
   USE noncollin_module,       ONLY : npol, noncolin
-  USE klist,                  ONLY : nks, wk, xk, igk_k, ngk, nkstot
-  USE wvfct,                  ONLY : nbnd, npwx, wg, g2kin, current_k,et
-  USE ener,                   ONLY : ef
-  USE uspp,                   ONLY : nkb, vkb
-  USE gvect,                  ONLY : ngm, g
-  USE gvecw,                  ONLY : gcutw
+  USE klist,                  ONLY : nks, nkstot, ngk
+  USE wvfct,                  ONLY : nbnd, npwx, et
   USE lsda_mod,               ONLY : nspin
   USE orbm_module,            ONLY : ry2ha
   USE buffers,                ONLY : get_buffer
@@ -77,6 +72,7 @@ SUBROUTINE calc_elec_dipole
       ik, nks, get_clock('orbm')
 #endif
 
+    npw = ngk(ik)
 
     ! read wfcs from file and compute becp
     call get_buffer (evc, nwordwfc, iunwfc, ik)

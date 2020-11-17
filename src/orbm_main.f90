@@ -9,22 +9,11 @@
 PROGRAM orbm_main
   !-----------------------------------------------------------------------
   !
-  ! ... This is the main driver of the magnetic response program. 
+  ! ... This is the main driver of the orbm program. 
   ! ... It controls the initialization routines.
-  ! ... Features: NMR chemical shifts
-  !...            EPR g-tensor
-  ! ... Ported to Espresso by:
-  ! ... D. Ceresoli, A. P. Seitsonen, U. Gerstamnn and  F. Mauri
+  ! ... Features: electric transition dipole
+  !...            orbital magnetization
   ! ...
-  ! ... References (NMR):
-  ! ... F. Mauri and S. G. Louie Phys. Rev. Lett. 76, 4246 (1996)
-  ! ... F. Mauri, B. G. Pfrommer, S. G. Louie, Phys. Rev. Lett. 77, 5300 (1996)
-  ! ... T. Gregor, F. Mauri, and R. Car, J. Chem. Phys. 111, 1815 (1999)
-  ! ... C. J. Pickard and F. Mauri, Phys. Rev. B 63, 245101 (2001)
-  ! ... C. J. Pickard and F. Mauri, Phys. Rev. Lett. 91, 196401 (2003)
-  ! ...
-  ! ... References (g-tensor):
-  ! ... C. J. Pickard and F. Mauri, Phys. Rev. Lett. 88, 086403 (2002)
   ! ...
   USE kinds,           ONLY : DP
   USE mp,              ONLY : mp_bcast
