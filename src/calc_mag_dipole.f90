@@ -9,18 +9,22 @@
 SUBROUTINE calc_mag_dipole
   !-----------------------------------------------------------------------
   !
-  ! This routine calculates the electric transition dipole matrix
-  !                         - <n|r|m>
+  ! This routine calculates the magnetic transition dipole matrix
+  !    i/2 ( <dn|\times v|m> + <n|v \times|dm> )
   !
   USE kinds,                  ONLY : dp
   USE io_global,              ONLY : stdout, ionode, ionode_id
   USE io_files,               ONLY : nwordwfc, iunwfc
+  USE cell_base,              ONLY : tpiba2
   USE wavefunctions,          ONLY : evc
   USE noncollin_module,       ONLY : npol, noncolin
-  USE klist,                  ONLY : nks, nkstot, ngk
-  USE wvfct,                  ONLY : nbnd, npwx, et
-  USE lsda_mod,               ONLY : nspin
-  USE orbm_module,            ONLY : ry2ha, ci
+  USE uspp,                   ONLY : nkb, vkb
+  USE gvect,                  ONLY : ngm, g
+  USE gvecw,                  ONLY : gcutw
+  USE klist,                  ONLY : nks, nkstot, ngk, xk, igk_k 
+  USE wvfct,                  ONLY : nbnd, npwx, et, current_k, g2kin
+  USE lsda_mod,               ONLY : nspin, lsda, isk, current_spin
+  USE orbm_module,            ONLY : ry2ha, ci, nbnd_occ
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm, npool
@@ -32,13 +36,15 @@ SUBROUTINE calc_mag_dipole
 
   ! the following three quantities are for norm-conserving PPs
   complex(dp), allocatable, dimension(:,:,:) :: vel_evc       ! v_{k,k}|evc>
-  complex(dp), allocatable, dimension(:,:,:,:) :: rmat_          ! 
-  complex(dp), allocatable, dimension(:,:,:,:) :: rmat          !
-  complex(dp), allocatable, dimension(:,:,:) :: ps            ! <n|v|m> 
+  complex(dp), allocatable, dimension(:,:,:) :: evc1          ! du/dk
+  ! temporary working array, same size as evc/evq
+  complex(dp), allocatable :: aux(:,:)
+  complex(dp), allocatable, dimension(:,:,:,:) :: ps 
+  complex(dp), allocatable, dimension(:,:,:) :: ps1
   real(dp) :: de_thr = 1.0d-5
 
   integer :: ik, ios, iunout
-  integer :: i, ibnd, jbnd
+  integer :: i, j, ibnd, jbnd
   real(dp), external :: get_clock
   integer, external :: find_free_unit
   integer :: npw
@@ -48,13 +54,14 @@ SUBROUTINE calc_mag_dipole
   !-----------------------------------------------------------------------
   ! allocate memory
   !-----------------------------------------------------------------------
-  allocate ( vel_evc(npwx*npol,nbnd,3), ps(nbnd, nbnd, 3))
-  allocate ( rmat(nbnd,nbnd,nkstot,3),  rmat_(nbnd,nbnd, nks, 3) )
+  allocate ( vel_evc(npwx*npol,nbnd,3), evc1(npwx*npol,nbnd,3) )
+  allocate ( ps(nbnd,nbnd,3,3),  ps1(nbnd,nbnd,3) )
+  allocate ( aux(npwx*npol, nbnd) )
 
   ! print memory estimate
   call orbm_memory_report
 
-  write(stdout, '(5X,''Computing the electric dipole matrix (e bohr):'',$)')
+  write(stdout, '(5X,''Computing the magnetic dipole matrix (bohr mag):'',$)')
   write(stdout, *)
 
 
@@ -72,7 +79,13 @@ SUBROUTINE calc_mag_dipole
       ik, nks, get_clock('orbm')
 #endif
 
+    ! initialize k, spin, g2kin used in h_psi    
+    current_k = ik
+    if (lsda) current_spin = isk(ik)
     npw = ngk(ik)
+    call gk_sort(xk(1,ik), ngm, g, gcutw, npw, igk_k(1,ik), g2kin)
+    g2kin(:) = g2kin(:) * tpiba2
+    call init_us_2(npw, igk_k(1,ik), xk(1,ik), vkb)
 
     ! read wfcs from file and compute becp
     call get_buffer (evc, nwordwfc, iunwfc, ik)
@@ -81,27 +94,38 @@ SUBROUTINE calc_mag_dipole
     ! calculate du/dk    
     vel_evc(:,:,:) = (0.d0,0.d0)
     ps(:,:,:)= (0.d0,0.d0)
+    
     do i = 1,3
+    
+       ! calculate evc1=du/dk
        call apply_vel(evc, vel_evc(1,1,i), ik, i)
-       !aux(:,:) = vel_evc(:,:,i)
-       !call greenfunction(ik, aux, evc1(1,1,i))
+       aux(:,:) = vel_evc(:,:,i)
+       call greenfunction(ik, aux, evc1(1,1,i))
        
-       ! calculate the velocity matrix ps(nbnd,nbnd)
-       if (noncolin) then
+       ! calculate <n|v \times |dm>
+       do j = 1,3
+       
+          if (noncolin) then
      
-          CALL zgemm('C', 'N', nbnd, nbnd, npwx*npol, (1.d0,0.d0), evc(1,1), &
-                    npwx*npol, vel_evc(1,1,i), npwx*npol, (0.d0,0.d0), ps(1,1,i), nbnd)
-       else
+             CALL zgemm('C', 'N', nbnd, nbnd, npwx*npol, (1.d0,0.d0), vel_evc(1,1,j), &
+                    npwx*npol, evc1(1,1,i), npwx*npol, (0.d0,0.d0), ps(1,1,j,i), nbnd)
+          else
        
-          CALL zgemm('C', 'N', nbnd, nbnd, npw, (1.d0,0.d0), evc(1,1), &
-                    npwx, vel_evc(1,1,i), npwx, (0.d0,0.d0), ps(1,1,i), nbnd)
-       endif
-       
+             CALL zgemm('C', 'N', nbnd, nbnd, npw, (1.d0,0.d0), vel_evc(1,1,j), &
+                    npwx, evc1(1,1,i), npwx, (0.d0,0.d0), ps(1,1,j,i), nbnd)
+          endif
+          
+       enddo 
     enddo
     
 #ifdef __MPI
     call mp_sum(ps, intra_pool_comm)
 #endif 
+    
+    ps1(:,:,1) = ps(:,:,2,3) - ps(:,:,3,2)
+    ps1(:,:,2) = ps(:,:,3,1) - ps(:,:,1,3)
+    ps1(:,:,3) = ps(:,:,1,2) - ps(:,:,2,1)
+    
     
     ! electric dipole matrix 
     ! <n|r|m> = i\hbar <n|v|m> / (e_m - e_n)
