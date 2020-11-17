@@ -130,7 +130,7 @@ SUBROUTINE greenfunction2(ik, psi, g_psi)
 
   ! solve linear system  
   conv_root = .true.
-  call cgsolve_all (ch_psi_all, cg_psi, et(1,ik), psi, g_psi, &
+  call cgsolve_all (ch_psi_all2, cg_psi, et(1,ik), psi, g_psi, &
        h_diag, npwx, npw, thresh, ik, lter, conv_root, anorm, &
        nbnd_occ(ik), npol )
 
@@ -193,7 +193,7 @@ subroutine ch_psi_all2 (n, h, ah, e, ik, m)
   ! the product of the S matrix and h
 
   call start_clock ('ch_psi')
-  allocate (ps  ( nbnd , m))    
+  allocate (ps  ( m ))    
   allocate (hpsi( npwx*npol , m))    
   allocate (spsi( npwx*npol , m))    
   hpsi (:,:) = (0.d0, 0.d0)
@@ -228,29 +228,21 @@ subroutine ch_psi_all2 (n, h, ah, e, ik, m)
   !
   ikq = ik
   ps (:) = (0.d0, 0.d0)
-  do ibnd = 1, nbnd
-     
-  if (noncolin) then
-     CALL zgemm ('C', 'N', nbnd_occ (ikq) , m, npwx*npol, (1.d0, 0.d0) , evc, &
-            npwx*npol, spsi, npwx*npol, (0.d0, 0.d0) , ps, nbnd)
-  else
-     call zgemm ('C', 'N', nbnd_occ (ikq) , m, n, (1.d0, 0.d0) , evc, &
-            npwx, spsi, npwx, (0.d0, 0.d0) , ps, nbnd)
-  endif
-  ps (:,:) = ps(:,:) * alpha_pv
-
+  
+  do ibnd = 1, m
+     ps(ibnd) = zdotc(npwx*npol, evc(1,ibnd), 1, spsi(1,ibnd), 1)
+  enddo
+  
+  ps(:) = ps(:)*alpha_pv
+  
 #ifdef __MPI
-  call mp_sum ( ps, intra_pool_comm )
+  call mp_sum(ps, intra_pool_comm)
 #endif
 
-  hpsi (:,:) = (0.d0, 0.d0)
-  if (noncolin) then
-      CALL zgemm ('N', 'N', npwx*npol, m, nbnd_occ (ikq) , (1.d0, 0.d0) , evc, &
-            npwx*npol, ps, nbnd, (1.d0, 0.d0) , hpsi, npwx*npol)
-  else
-      call zgemm ('N', 'N', n, m, nbnd_occ (ikq) , (1.d0, 0.d0) , evc, &
-            npwx, ps, nbnd, (1.d0, 0.d0) , hpsi, npwx)
-  endif
+  do ibnd = 1, m
+     hpsi(:,ibnd) = evc(:,ibnd)*ps(ibnd) + hpsi(:,ibnd)
+  enddo
+  
   spsi(:,:) = hpsi(:,:)
 
   !
