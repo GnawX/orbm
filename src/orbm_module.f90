@@ -32,6 +32,9 @@ MODULE orbm_module
  
   ! rydberg to Hartree
   REAL(DP), PARAMETER :: ry2ha = 0.5_DP
+  
+  ! imaginary unit
+  COMPLEX(DP), PARAMETER :: ci = (0.0_DP, 1.0_DP)
  
   ! number of occupied bands at each k-point
   INTEGER :: nbnd_occ(npk)
