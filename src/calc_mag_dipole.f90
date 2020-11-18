@@ -39,8 +39,7 @@ SUBROUTINE calc_mag_dipole
   complex(dp), allocatable, dimension(:,:,:) :: evc1          ! du/dk
   ! temporary working array, same size as evc/evq
   complex(dp), allocatable :: aux(:,:)
-  complex(dp), allocatable, dimension(:,:,:,:) :: ps3 
-  complex(dp), allocatable, dimension(:,:,:) :: ps1
+  complex(dp), allocatable, dimension(:,:,:,:) :: ps1
   complex(dp), allocatable, dimension(:,:,:,:) :: ps2
   complex(dp), allocatable, dimension(:,:,:,:) :: mmat
 
@@ -59,8 +58,8 @@ SUBROUTINE calc_mag_dipole
   ! allocate memory
   !-----------------------------------------------------------------------
   allocate ( vel_evc(npwx*npol,nbnd,3), evc1(npwx*npol,nbnd,3) )
-  allocate ( ps3(nc,nv,nks,3),  ps1(nc,nv,3), ps2(nc,nv,3,3) )
-  allocate ( aux(npwx*npol, nbnd), mmat(nc,nv,nkstot,3) )
+  allocate ( ps1(nbnd,nbnd,3,3), ps2(nbnd,nbnd,nks,3) )
+  allocate ( aux(npwx*npol, nbnd), mmat(nbnd,nbnd,nkstot,3) )
 
   ! print memory estimate
   call orbm_memory_report
@@ -97,8 +96,9 @@ SUBROUTINE calc_mag_dipole
     
     ! calculate du/dk    
     vel_evc(:,:,:) = (0.d0,0.d0)
-    ps(:,:,:,:)= (0.d0,0.d0)
-    ps1(:,:,:)= (0.d0,0.d0)
+    ps1(:,:,:,:)= (0.d0,0.d0)
+    ps2(:,:,:,:)= (0.d0,0.d0)
+    mmat(:,:,:,:)= (0.d0,0.d0)
     
     do i = 1,3
     
@@ -107,30 +107,18 @@ SUBROUTINE calc_mag_dipole
        aux(:,:) = vel_evc(:,:,i)
        call greenfunction(ik, aux, evc1(1,1,i))
        
-       ! velocity matrix
-       if (noncolin) then
-       
-          CALL zgemm('C', 'N', nc, nv, npwx*npol, (1.d0,0.d0), evc(1,1+nv,j), &
-                    npwx*npol, vel_evc(1,1,i), npwx*npol, (0.d0,0.d0), ps1(1,1,i), nc)
-          
-       else
-       
-          CALL zgemm('C', 'N', nc, nv, npw, (1.d0,0.d0), evc(1,1+nv,j), &
-                    npwx, vel_evc(1,1,i), npwx, (0.d0,0.d0), ps1(1,1,i), nc)
-                    
-       endif
           
        ! calculate <psi_c |v \times |dpsi_v>
        do j = 1,3
        
           if (noncolin) then
      
-             CALL zgemm('C', 'N', nc, nv, npwx*npol, (1.d0,0.d0), vel_evc(1,1+nv,j), &
-                    npwx*npol, evc1(1,1,i), npwx*npol, (0.d0,0.d0), ps2(1,1,j,i), nc)
+             CALL zgemm('C', 'N', nbnd, nbnd, npwx*npol, (1.d0,0.d0), vel_evc(1,1,j), &
+                    npwx*npol, evc1(1,1,i), npwx*npol, (0.d0,0.d0), ps1(1,1,j,i), nbnd)
           else
        
-             CALL zgemm('C', 'N', nc, nv, npw, (1.d0,0.d0), vel_evc(1,1+nv,j), &
-                    npwx, evc1(1,1,i), npwx, (0.d0,0.d0), ps2(1,1,j,i), nc)
+             CALL zgemm('C', 'N', nbnd, nbnd, npw, (1.d0,0.d0), vel_evc(1,1,j), &
+                    npwx, evc1(1,1,i), npwx, (0.d0,0.d0), ps1(1,1,j,i), nbnd)
              
           endif
           
@@ -139,18 +127,25 @@ SUBROUTINE calc_mag_dipole
     
 #ifdef __MPI
     call mp_sum(ps1, intra_pool_comm)
-    call mp_sum(ps2, intra_pool_comm)
 #endif 
     
-    ps3(:,:,ik,1) = ( ps2(:,:,2,3) - ps2(:,:,3,2) )*2 - ( ps1(:,:,2) - ps1(:,:,3) )
-    ps3(:,:,ik,2) = ( ps2(:,:,3,1) - ps2(:,:,1,3) )*2 - ( ps1(:,:,3) - ps1(:,:,1) )
-    ps3(:,:,ik,3) = ( ps2(:,:,1,2) - ps2(:,:,2,1) )*2 - ( ps1(:,:,1) - ps1(:,:,2) )
+    ps2(:,:,ik,1) = ( ps1(:,:,2,3) - ps1(:,:,3,2) )*2*ci 
+    ps2(:,:,ik,2) = ( ps1(:,:,3,1) - ps1(:,:,1,3) )*2*ci 
+    ps2(:,:,ik,3) = ( ps1(:,:,1,2) - ps1(:,:,2,1) )*2*ci 
     
-
+  do ibnd = nbnd_occ(ik)+1, nbnd
+     do jbnd = 1, nbnd_occ(ik)
+        ps2(jbnd,ibnd,ik,:) = CONJG(ps2(ibnd,jbnd,ik,:))
+     enddo
+  enddo
+  
+  ! this part is not correct and not needed
+  ps2(nbnd_occ(ik)+1:nbnd,nbnd_occ(ik)+1:nbnd,ik,:) = (0.d0,0.d0) 
+  !
   if ( npool == 1 ) then
-     mmat = ps3
+     mmat = ps2
   else
-     call poolcollect_z( nc, nv, nks, ps3, nkstot, mmat)
+     call poolcollect_z( nbnd, nks, ps2, nkstot, mmat)
   endif
   
   ios = 0
@@ -165,7 +160,7 @@ SUBROUTINE calc_mag_dipole
   if ( ios/=0 ) call errore ('calc_mag_dipole', 'Opening file mdipole', abs (ios) )
 
   if (ionode) then
-     write(iunout) nc, nv, nkstot, nspin
+     write(iunout) nbnd, nkstot, nspin
      write(iunout) mmat
      close(iunout)
   endif
@@ -180,7 +175,7 @@ SUBROUTINE calc_mag_dipole
   write(stdout,*)
 
   ! free memory as soon as possible
-  deallocate( vel_evc, evc1, aux, ps1, ps2, ps3, mmat )
+  deallocate( vel_evc, evc1, aux, ps1, ps2, mmat )
 
   
   !call restart_cleanup ( )
