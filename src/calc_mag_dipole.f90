@@ -10,7 +10,7 @@ SUBROUTINE calc_mag_dipole
   !-----------------------------------------------------------------------
   !
   ! This routine calculates the magnetic transition dipole matrix
-  !    i/2 ( <dn|\times v|m> + <n|v \times|dm> ) in AU
+  !             i <n|v \times|dm>  in AU
   ! 
   USE kinds,                  ONLY : dp
   USE io_global,              ONLY : stdout, ionode, ionode_id
@@ -44,7 +44,7 @@ SUBROUTINE calc_mag_dipole
   complex(dp), allocatable, dimension(:,:,:,:) :: mmat
 
   integer :: ik, ios, iunout
-  integer :: i, j, ibnd, jbnd, nv, nc
+  integer :: i, j, ibnd, jbnd
   real(dp), external :: get_clock
   integer, external :: find_free_unit
   integer :: npw
@@ -52,8 +52,6 @@ SUBROUTINE calc_mag_dipole
  
   call start_clock('calc_elec_dipole')
   
-  nv = nbnd_occ(1) ! semiconductor same occ across kpts
-  nc = nbnd - nv
   !-----------------------------------------------------------------------
   ! allocate memory
   !-----------------------------------------------------------------------
