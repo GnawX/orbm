@@ -307,7 +307,7 @@ subroutine cgsolve_all (ch_psi, cg_psi, e, d0psi, dpsi, h_diag, &
   !
   !  here the local variables
   !
-  integer, parameter :: maxter = 200
+  integer, parameter :: maxter = 400
   ! the maximum number of iterations
   integer :: iter, ibnd, lbnd
   ! counters on iteration, bands

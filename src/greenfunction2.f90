@@ -43,7 +43,7 @@ SUBROUTINE greenfunction2(ik, psi, g_psi)
 
   !-- local variables ----------------------------------------------------
   real(dp), parameter :: ryd_to_hartree = 0.5d0
-  complex(dp), allocatable :: ps(:,:), work (:)
+  complex(dp), allocatable :: ps(:), work (:)
   real(dp), allocatable :: h_diag (:,:), eprec (:)
   real(dp) :: anorm, thresh, gk(3)
   integer :: ibnd, jbnd, ig, lter
@@ -51,7 +51,7 @@ SUBROUTINE greenfunction2(ik, psi, g_psi)
   complex(dp), external :: zdotc
   real(dp), external :: wgauss, w0gauss
   real(dp) :: wg1, w0g, wgp, wwg, deltae, theta
-  external ch_psi_all, cg_psi
+  external ch_psi_all2, cg_psi
   integer :: npw
  
   ! start clock
@@ -59,7 +59,7 @@ SUBROUTINE greenfunction2(ik, psi, g_psi)
   npw = ngk(ik)
 
   ! allocate memory
-  allocate (work(npwx*npol), ps(nbnd,nbnd), h_diag(npwx*npol,nbnd), eprec(nbnd))
+  allocate (work(npwx*npol), ps(nbnd), h_diag(npwx*npol,nbnd), eprec(nbnd))
   call allocate_bec_type(nkb, nbnd, becp)
 
   !====================================================================
@@ -132,7 +132,8 @@ SUBROUTINE greenfunction2(ik, psi, g_psi)
   conv_root = .true.
   call cgsolve_all (ch_psi_all2, cg_psi, et(1,ik), psi, g_psi, &
        h_diag, npwx, npw, thresh, ik, lter, conv_root, anorm, &
-       nbnd_occ(ik), npol )
+       nbnd, npol )
+       !nbnd_occ(ik), npol )
 
 
   if (iverbosity > 20) &
@@ -192,6 +193,10 @@ subroutine ch_psi_all2 (n, h, ah, e, ik, m)
   ! the product of the Hamiltonian and h
   ! the product of the S matrix and h
 
+  complex(dp), external :: zdotc
+  real(dp) :: eta=0.000_dp
+
+
   call start_clock ('ch_psi')
   allocate (ps  ( m ))    
   allocate (hpsi( npwx*npol , m))    
@@ -213,58 +218,57 @@ subroutine ch_psi_all2 (n, h, ah, e, ik, m)
 
   do ibnd = 1, m
      do ig = 1, n
-        ah (ig, ibnd) = hpsi (ig, ibnd) - e (ibnd) * spsi (ig, ibnd)
+        ah (ig, ibnd) = hpsi (ig, ibnd) - (e (ibnd)+eta*(0.0d0,1.0d0)) * spsi (ig, ibnd)
      enddo
   enddo
   IF (noncolin) THEN
      DO ibnd = 1, m
         DO ig = 1, n
-           ah(ig+npwx, ibnd) = hpsi(ig+npwx, ibnd) - e(ibnd) * spsi(ig+npwx, ibnd)
+           ah(ig+npwx, ibnd) = hpsi(ig+npwx, ibnd) - (e(ibnd)+eta*(0.0d0,1.0d0)) * spsi(ig+npwx, ibnd)
         ENDDO
      ENDDO
   ENDIF
   !
   !   Here we compute the projector in the valence band
   !
-  ikq = ik
-  ps (:) = (0.d0, 0.d0)
-  
-  do ibnd = 1, m
-     ps(ibnd) = zdotc(npwx*npol, evc(1,ibnd), 1, spsi(1,ibnd), 1)
-  enddo
-  
-  ps(:) = ps(:)*alpha_pv
-  
-#ifdef __MPI
-  call mp_sum(ps, intra_pool_comm)
-#endif
-
-  do ibnd = 1, m
-     hpsi(:,ibnd) = evc(:,ibnd)*ps(ibnd) + hpsi(:,ibnd)
-  enddo
-  
-  spsi(:,:) = hpsi(:,:)
-
-  !
-  !    And apply S again
-  !
-
-  !call calbec(n, vkb, hpsi, becp, m)
-  !call s_psi (npwx, n, m, hpsi, spsi)
-
-
-  do ibnd = 1, m
-     do ig = 1, n
-        ah (ig, ibnd) = ah (ig, ibnd) + spsi (ig, ibnd)
-     enddo
-  enddo
-  IF (noncolin) THEN
-       DO ibnd = 1, m
-          DO ig = 1, n
-             ah (ig+npwx, ibnd) = ah (ig+npwx, ibnd) + spsi (ig+npwx, ibnd)
-          ENDDO
-       ENDDO
-   END IF
+!  ikq = ik
+!  ps (:) = (0.d0, 0.d0)
+!  
+!  do ibnd = 1, m
+!     ps(ibnd) = zdotc(npwx*npol, evc(1,ibnd), 1, spsi(1,ibnd), 1)
+!  enddo
+!  
+!  ps(:) = ps(:)*alpha_pv
+!  
+!#ifdef __MPI
+!  call mp_sum(ps, intra_pool_comm)
+!#endif
+!
+!  do ibnd = 1, m
+!     spsi(:,ibnd) = evc(:,ibnd)*ps(ibnd) 
+!  enddo
+!  
+!
+!  !
+!  !    And apply S again
+!  !
+!
+!  !call calbec(n, vkb, hpsi, becp, m)
+!  !call s_psi (npwx, n, m, hpsi, spsi)
+!
+!
+!  do ibnd = 1, m
+!     do ig = 1, n
+!        ah (ig, ibnd) = ah (ig, ibnd) + spsi (ig, ibnd)
+!     enddo
+!  enddo
+!  IF (noncolin) THEN
+!       DO ibnd = 1, m
+!          DO ig = 1, n
+!             ah (ig+npwx, ibnd) = ah (ig+npwx, ibnd) + spsi (ig+npwx, ibnd)
+!          ENDDO
+!       ENDDO
+!   END IF
 
   deallocate (spsi)
   deallocate (hpsi)
