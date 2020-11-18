@@ -131,15 +131,17 @@ SUBROUTINE calc_mag_dipole
     ps2(:,:,ik,2) = ( ps1(:,:,3,1) - ps1(:,:,1,3) )*2*ci 
     ps2(:,:,ik,3) = ( ps1(:,:,1,2) - ps1(:,:,2,1) )*2*ci 
     
-  do ibnd = nbnd_occ(ik)+1, nbnd
-     do jbnd = 1, nbnd_occ(ik)
-        ps2(jbnd,ibnd,ik,:) = CONJG(ps2(ibnd,jbnd,ik,:))
-     enddo
-  enddo
+    do ibnd = nbnd_occ(ik)+1, nbnd
+       do jbnd = 1, nbnd_occ(ik)
+          ps2(jbnd,ibnd,ik,:) = CONJG(ps2(ibnd,jbnd,ik,:))
+       enddo
+    enddo
   
-  ! this part is not correct and not needed
-  ps2(nbnd_occ(ik)+1:nbnd,nbnd_occ(ik)+1:nbnd,ik,:) = (0.d0,0.d0) 
-  !
+    ! this part is not correct and not needed
+    ps2(nbnd_occ(ik)+1:nbnd,nbnd_occ(ik)+1:nbnd,ik,:) = (0.d0,0.d0) 
+    !
+  enddo !ik
+  
   if ( npool == 1 ) then
      mmat = ps2
   else
