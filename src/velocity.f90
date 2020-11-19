@@ -34,7 +34,7 @@ SUBROUTINE apply_p(psi, p_psi, ik, ipol)
   INTEGER, INTENT(IN) :: ik               ! k-point
   INTEGER, INTENT(IN) :: ipol             ! cartesian direction (1..3)
   COMPLEX(DP), INTENT(IN) :: psi(npwx*npol,nbnd)
-  COMPLEX(DP), INTENT(OUT) :: p_psi(npwx*npol,nbnd)
+  COMPLEX(DP), INTENT(INOUT) :: p_psi(npwx*npol,nbnd)
 
   !-- local variables ----------------------------------------------------
   REAL(DP) :: gk(npwx)
@@ -162,11 +162,11 @@ SUBROUTINE apply_vel(psi, vel_psi, ik, ipol)
   INTEGER, INTENT(IN) :: ipol       ! cartesian direction (1..3)
   INTEGER, INTENT(IN) :: ik         ! k-point
   COMPLEX(DP), INTENT(IN) :: psi(npwx*npol,nbnd)
-  COMPLEX(DP), INTENT(OUT) :: vel_psi(npwx*npol,nbnd)
+  COMPLEX(DP), INTENT(INOUT) :: vel_psi(npwx*npol,nbnd)
 
 
   call start_clock('apply_vel')
-
+ 
   call apply_vel_NL(psi, vel_psi, ik, ipol)
 
   call apply_p(psi, vel_psi, ik, ipol)

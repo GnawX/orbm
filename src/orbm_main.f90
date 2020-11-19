@@ -68,7 +68,7 @@ PROGRAM orbm_main
 
   write(stdout,*)
   write(stdout,'(5X,''***** This is orbm git revision '',A,'' *****'')') 'beta version'
-  write(stdout,'(5X,''***** you can cite: N. Varini et al., Comp. Phys. Comm. 184, 1827 (2013)  *****'')')
+  write(stdout,'(5X,''***** you can cite: ------  *****'')')
   write(stdout,'(5X,''***** in publications or presentations arising from this work.            *****'')')
   write(stdout,*)
  
@@ -111,7 +111,7 @@ PROGRAM orbm_main
   case ( 'elec_dipole' )
      call calc_elec_dipole
   case ( 'mag_dipole' )
-     !call calc_mag_dipole
+     call calc_mag_dipole
   case ( 'elec_quadrupole' )
      !call calc_elec_quadrupole
   case default

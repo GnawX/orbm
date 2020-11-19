@@ -6,18 +6,21 @@ PROGRAM dipolef
    
    INTEGER, PARAMETER :: dp = selected_real_kind(14,200)
    INTEGER :: nbnd, nks, nspin, ib1, ib2, ik
-   INTEGER :: iun = 28
+   INTEGER :: iun 
    
    COMPLEX(dp), ALLOCATABLE :: mat(:,:,:,:)
    
-   OPEN(iun, FILE='edipole', FORM='UNFORMATTED')
+   iun = 5
+   !OPEN(iun, FILE='edipole', FORM='UNFORMATTED')
+   OPEN(iun, FORM='UNFORMATTED')
    READ(iun) nbnd, nks, nspin
    
    ALLOCATE( mat(nbnd, nbnd, nks, 3) )
    READ(iun) mat
    CLOSE(iun)
    
-   OPEN(iun, FILE='edipolef', FORM='FORMATTED')
+   iun = 6
+   !OPEN(iun, FILE='edipolef', FORM='FORMATTED')
    WRITE(iun, '(3I6)') nspin, nks, nbnd
    
    
