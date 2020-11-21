@@ -157,7 +157,7 @@ SUBROUTINE calc_mag_dipole
     enddo
   
     ! these parts are not correct and not needed
-    ps2(1:nbnd_occ(ik),1:nbnd_occ(ik),ik,:) = (0.d0,0.d0) 
+    !ps2(1:nbnd_occ(ik),1:nbnd_occ(ik),ik,:) = (0.d0,0.d0) 
     ps2(nbnd_occ(ik)+1:nbnd,nbnd_occ(ik)+1:nbnd,ik,:) = (0.d0,0.d0) 
     !
   enddo !ik
