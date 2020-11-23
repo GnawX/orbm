@@ -41,6 +41,10 @@ MODULE orbm_module
   
   ! alpha shift of the projector on the valence wfcs
   REAL(DP) :: alpha_pv
+  
+    ! eigenvalues and eigenfunctions at k+q
+  REAL(DP), ALLOCATABLE :: etq(:,:)
+  COMPLEX(DP), ALLOCATABLE :: evq(:,:)
 
   ! convergence threshold for diagonalizationa and greenfunction
   REAL(DP) :: conv_threshold
