@@ -68,7 +68,8 @@ MODULE orbm_module
   ! job: nmr, g_tensor, efg, hyperfine
   CHARACTER(80) :: job
 
- 
+  ! method to calculate du/dk
+  CHARACTER(80) :: dudk
   
 
 !-----------------------------------------------------------------------
