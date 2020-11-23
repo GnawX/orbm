@@ -84,28 +84,41 @@ SUBROUTINE calc_mag_dipole
       ik, nks, get_clock('orbm')
 #endif
 
-    ! initialize k, spin, g2kin used in h_psi    
-    current_k = ik
-    if (lsda) current_spin = isk(ik)
-    npw = ngk(ik)
-    call gk_sort(xk(1,ik), ngm, g, gcutw, npw, igk_k(1,ik), g2kin)
-    g2kin(:) = g2kin(:) * tpiba2
-    call init_us_2(npw, igk_k(1,ik), xk(1,ik), vkb)
 
-    ! read wfcs from file and compute becp
+    ! read wfcs from file 
     call get_buffer (evc, nwordwfc, iunwfc, ik)
     
-    
-    ! calculate du/dk    
+    ! calculate velocity operator
     vel_evc(:,:,:) = (0.d0,0.d0)
-    !evc1(:,:,:) = (0.d0,0.d0)
-    ps1(:,:,:,:)= (0.d0,0.d0)
-    
     do i = 1,3
-       ! calculate evc1=du/dk
        call apply_vel(evc, vel_evc(1,1,i), ik, i)
-       aux(:,:) = vel_evc(:,:,i)
-       call greenfunction(ik, aux, evc1(1,1,i))
+    enddo
+    
+    ! calculate du/dk
+    if (trim(method)=='kdotp')) then
+    
+       ! initialize k, spin, g2kin used in h_psi    
+       current_k = ik
+       if (lsda) current_spin = isk(ik)
+       npw = ngk(ik)
+       call gk_sort(xk(1,ik), ngm, g, gcutw, npw, igk_k(1,ik), g2kin)
+       g2kin(:) = g2kin(:) * tpiba2
+       if (nkb > 0) call init_us_2(npw, igk_k(1,ik), xk(1,ik), vkb)
+    
+       do i = 1,3
+          aux(:,:) = vel_evc(:,:,i)
+          call greenfunction(ik, aux, evc1(1,1,i))
+       enddo
+       
+    elseif (trim(method)=='covariant' ) then
+       
+       call dudk_covariant(ik, evc1(:,:,:))
+       
+    else
+       write(stdout,*)
+       call errore('compute_dudk', 'unknown du/dk method: '//trim(method), 1)
+    endif
+    
         
        ! transition dipole matrix only accurate for valence to conduction transitions
        !   if (noncolin) then
@@ -119,9 +132,8 @@ SUBROUTINE calc_mag_dipole
        !      
        !   endif
 
-
-    enddo   
-          
+    
+    ps1(:,:,:,:)= (0.d0,0.d0)
        ! calculate <dpsi_v | \times v|psi_c>
     do i = 1,3
        do j = 1,3
