@@ -95,7 +95,7 @@ SUBROUTINE calc_mag_dipole
     enddo
     
     ! calculate du/dk
-    if (trim(method)=='kdotp')) then
+    if (trim(dudk)=='kdotp')) then
     
        ! initialize k, spin, g2kin used in h_psi    
        current_k = ik
@@ -110,13 +110,13 @@ SUBROUTINE calc_mag_dipole
           call greenfunction(ik, aux, evc1(1,1,i))
        enddo
        
-    elseif (trim(method)=='covariant' ) then
+    elseif (trim(dudk)=='covariant' ) then
        
        call dudk_covariant(ik, evc1(:,:,:))
        
     else
        write(stdout,*)
-       call errore('compute_dudk', 'unknown du/dk method: '//trim(method), 1)
+       call errore('compute_dudk', 'unknown du/dk method: '//trim(dudk), 1)
     endif
     
         
