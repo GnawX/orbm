@@ -110,23 +110,23 @@ SUBROUTINE compute_u_kq(ik, q)
   !!call mp_sum(evc, inter_bgrp_comm)
 !#endif
 
-#if 0
-  ! randomize a little bit in case of CG diagonalization
-  if ( isolve == 1 ) then
+!#if 0
+!  ! randomize a little bit in case of CG diagonalization
+!  if ( isolve == 1 ) then
 !#ifdef __BANDS
 !    rr = randy(ik+nks*me_bgrp) ! starting from a well defined k-dependent seed
 !#else
-    rr = randy(ik+nks*me_pool) ! starting from a well defined k-dependent seed
+!    rr = randy(ik+nks*me_pool) ! starting from a well defined k-dependent seed
 !#endif
-    do i = 1, nbnd
-      do ig = 1, npw
-        rr = r_rand*(2.d0*randy() - 1.d0)
-        arg = tpi * randy()
-        evc(ig,i) = evc(ig,i)*CMPLX(1.d0+rr*cos(arg),rr*sin(arg),kind=DP)
-      enddo
-    enddo
-  endif
-#endif
+!    do i = 1, nbnd
+!      do ig = 1, npw
+!        rr = r_rand*(2.d0*randy() - 1.d0)
+!        arg = tpi * randy()
+!        evc(ig,i) = evc(ig,i)*CMPLX(1.d0+rr*cos(arg),rr*sin(arg),kind=DP)
+!      enddo
+!    enddo
+!  endif
+!#endif
 
   ! re-update potential
   !call setlocal
@@ -137,7 +137,7 @@ SUBROUTINE compute_u_kq(ik, q)
   !call newd
 
   ! diagonalization of bands for k-point ik
-  CALL allocate_bec_type ( nkb, nbnd, becp, intra_bgrp_comm )
+  CALL allocate_bec_type ( nkb, nbnd, becp)
   write(stdout,'(5X,''Rotating WFCS'')')
   CALL rotate_wfc ( npwx, npw, nbnd, gstart, nbnd, evc, npol, okvan, evc, et(1,ik) )
   avg_iter = 1.d0
