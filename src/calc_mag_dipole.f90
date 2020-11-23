@@ -24,7 +24,7 @@ SUBROUTINE calc_mag_dipole
   USE klist,                  ONLY : nks, nkstot, ngk, xk, igk_k 
   USE wvfct,                  ONLY : nbnd, npwx, et, current_k, g2kin
   USE lsda_mod,               ONLY : nspin, lsda, isk, current_spin
-  USE orbm_module,            ONLY : ry2ha, ci, nbnd_occ
+  USE orbm_module,            ONLY : ry2ha, ci, nbnd_occ, dudk_method
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm, npool
@@ -57,7 +57,7 @@ SUBROUTINE calc_mag_dipole
   ! allocate memory
   !-----------------------------------------------------------------------
   allocate ( vel_evc(npwx*npol,nbnd,3), evc1(npwx*npol,nbnd,3) )
-  allocate ( ps1(nbnd,nbnd,3,3), ps2(nbnd,nbnd,nks,3)) !, ps(nbnd,nbnd,nks,3) )
+  allocate ( ps1(nbnd,nbnd,3,3), ps2(nbnd,nbnd,nks,3)) !  , ps(nbnd,nbnd,nks,3) )
   allocate ( aux(npwx*npol, nbnd), mmat(nbnd,nbnd,nkstot,3) )
 
   ! print memory estimate
@@ -84,6 +84,7 @@ SUBROUTINE calc_mag_dipole
       ik, nks, get_clock('orbm')
 #endif
 
+    npw = ngk(ik)
 
     ! read wfcs from file 
     call get_buffer (evc, nwordwfc, iunwfc, ik)
@@ -95,12 +96,11 @@ SUBROUTINE calc_mag_dipole
     enddo
     
     ! calculate du/dk
-    if (trim(dudk)=='kdotp')) then
+    if (trim(dudk_method)=='kdotp') then
     
        ! initialize k, spin, g2kin used in h_psi    
        current_k = ik
        if (lsda) current_spin = isk(ik)
-       npw = ngk(ik)
        call gk_sort(xk(1,ik), ngm, g, gcutw, npw, igk_k(1,ik), g2kin)
        g2kin(:) = g2kin(:) * tpiba2
        if (nkb > 0) call init_us_2(npw, igk_k(1,ik), xk(1,ik), vkb)
@@ -110,27 +110,28 @@ SUBROUTINE calc_mag_dipole
           call greenfunction(ik, aux, evc1(1,1,i))
        enddo
        
-    elseif (trim(dudk)=='covariant' ) then
+    elseif (trim(dudk_method)=='covariant' ) then
        
        call dudk_covariant(ik, evc1(:,:,:))
        
     else
        write(stdout,*)
-       call errore('compute_dudk', 'unknown du/dk method: '//trim(dudk), 1)
+       call errore('compute_dudk', 'unknown du/dk method: '//trim(dudk_method), 1)
     endif
     
-        
-       ! transition dipole matrix only accurate for valence to conduction transitions
-       !   if (noncolin) then
-     
-       !      CALL zgemm('C', 'N', nbnd, nbnd, npwx*npol, (1.d0,0.d0), evc(1,1), &
-       !             npwx*npol, evc1(1,1,i), npwx*npol, (0.d0,0.d0), ps(1,1,ik,i), nbnd)
-       !   else
-       !
-       !      CALL zgemm('C', 'N', nbnd, nbnd, npw, (1.d0,0.d0), evc(1,1), &
-       !             npwx, evc1(1,1,i), npwx, (0.d0,0.d0), ps(1,1,ik,i), nbnd)
-       !      
-       !   endif
+     !  do i = 1,3 
+     !  ! transition dipole matrix only accurate for valence to conduction transitions
+     !     if (noncolin) then
+     !
+     !        CALL zgemm('C', 'N', nbnd, nbnd, npwx*npol, (1.d0,0.d0), evc(1,1), &
+     !               npwx*npol, evc1(1,1,i), npwx*npol, (0.d0,0.d0), ps(1,1,ik,i), nbnd)
+     !     else
+     !  
+     !        CALL zgemm('C', 'N', nbnd, nbnd, npw, (1.d0,0.d0), evc(1,1), &
+     !               npwx, evc1(1,1,i), npwx, (0.d0,0.d0), ps(1,1,ik,i), nbnd)
+     !        
+     !     endif
+     !  enddo
 
     
     ps1(:,:,:,:)= (0.d0,0.d0)

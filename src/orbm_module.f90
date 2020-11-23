@@ -69,7 +69,7 @@ MODULE orbm_module
   CHARACTER(80) :: job
 
   ! method to calculate du/dk
-  CHARACTER(80) :: dudk
+  CHARACTER(80) :: dudk_method
   
 
 !-----------------------------------------------------------------------
