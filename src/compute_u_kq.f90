@@ -19,9 +19,9 @@ SUBROUTINE compute_u_kq(ik, q)
   USE mp,                   ONLY : mp_sum
   USE mp_pools,             ONLY : inter_pool_comm, intra_pool_comm, me_pool
   USE mp_bands,             ONLY : intra_bgrp_comm
-#ifdef __BANDS
-  USE mp_bands,             ONLY : me_bgrp, inter_bgrp_comm
-#endif
+!#ifdef __BANDS
+!  USE mp_bands,             ONLY : me_bgrp, inter_bgrp_comm
+!#endif
   USE klist,                ONLY : nkstot, nks, xk, ngk, igk_k
   USE uspp,                 ONLY : vkb, nkb, okvan
   USE wvfct,                ONLY : et, nbnd, g2kin, &
@@ -42,7 +42,7 @@ SUBROUTINE compute_u_kq(ik, q)
   USE noncollin_module,     ONLY : npol
   USE becmod,               ONLY : becp, allocate_bec_type, deallocate_bec_type
   USE buffers
-  USE gipaw_module
+  USE orbm_module
   IMPLICIT NONE
   INTEGER :: ik, iter       ! k-point, current iterations
   REAL(DP) :: q(3)          ! q-vector
@@ -101,23 +101,23 @@ SUBROUTINE compute_u_kq(ik, q)
 
   ! various initializations
   if (nkb > 0) call init_us_2( npw, igk_k(1,ik), xk(1,ik), vkb )
-  if (lda_plus_U) call orthoatwfc1(ik)
+  !if (lda_plus_U) call orthoatwfc1(ik)
 
   ! read in wavefunctions from the previous iteration
   CALL get_buffer( evc, nwordwfc, iunwfc, ik)
-#ifdef __BANDS
+!#ifdef __BANDS
   ! not needed anymore??
   !!call mp_sum(evc, inter_bgrp_comm)
-#endif
+!#endif
 
 #if 0
   ! randomize a little bit in case of CG diagonalization
   if ( isolve == 1 ) then
-#ifdef __BANDS
-    rr = randy(ik+nks*me_bgrp) ! starting from a well defined k-dependent seed
-#else
+!#ifdef __BANDS
+!    rr = randy(ik+nks*me_bgrp) ! starting from a well defined k-dependent seed
+!#else
     rr = randy(ik+nks*me_pool) ! starting from a well defined k-dependent seed
-#endif
+!#endif
     do i = 1, nbnd
       do ig = 1, npw
         rr = r_rand*(2.d0*randy() - 1.d0)
@@ -174,10 +174,10 @@ SUBROUTINE compute_u_kq(ik, q)
   ! restore wavefunctions
   evq = evc
   CALL get_buffer(evc, nwordwfc, iunwfc, ik)
-#ifdef __BANDS
+!#ifdef __BANDS
   ! not needed anymore??
   !!call mp_sum(evc, inter_bgrp_comm)
-#endif
+!#endif
 
   CALL stop_clock( 'c_bands' )  
   RETURN
