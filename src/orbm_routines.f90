@@ -26,7 +26,7 @@ SUBROUTINE orbm_readin()
   character(len=256), external :: trimcheck
   character(len=80) :: diagonalization, verbosity
   namelist /inputorbm/ job, prefix, tmp_dir, conv_threshold, restart_mode, &
-                        q_orbm, iverbosity,  &
+                        q_orbm, iverbosity,  dudk, &
                         spline_ps, isolve, max_seconds, verbosity
                         
 
@@ -46,8 +46,9 @@ SUBROUTINE orbm_readin()
   iverbosity = -1
   verbosity = 'low'
   spline_ps = .true.
-  isolve = -1
+  isolve = 0
   max_seconds  =  1.d7
+  dudk = 'kdotp'
 
   ! read input    
   read( 5, inputorbm, err = 200, iostat = ios )
@@ -105,6 +106,7 @@ SUBROUTINE orbm_bcast_input
   call mp_bcast(iverbosity, root, world_comm)
   call mp_bcast(spline_ps, root, world_comm)
   call mp_bcast(isolve, root, world_comm)
+  call mp_bcast(dudk, root, world_comm)
   call mp_bcast(max_seconds, root, world_comm)
   call mp_bcast(restart_mode, root, world_comm)
 
@@ -118,16 +120,17 @@ SUBROUTINE orbm_allocate
   ! ... Allocate memory for GIPAW
   !
   USE orbm_module
-  USE ions_base,     ONLY : ntyp => nsp
+  !USE ions_base,     ONLY : ntyp => nsp
+  USE noncollin_module,     ONLY : npol
   USE pwcom
     
   implicit none
   
   ! wavefunction at k+q  
-  !allocate(evq(npwx,nbnd))
+  allocate(evq(npwx*npol,nbnd))
 
   ! eigenvalues
-  !allocate(etq(nbnd,nkstot))
+  allocate(etq(nbnd,nkstot))
 
   ! GIPAW projectors
   !if (.not. allocated(paw_recon)) allocate(paw_recon(ntyp))
