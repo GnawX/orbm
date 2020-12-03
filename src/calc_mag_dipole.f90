@@ -24,7 +24,7 @@ SUBROUTINE calc_mag_dipole
   USE klist,                  ONLY : nks, nkstot, ngk, xk, igk_k 
   USE wvfct,                  ONLY : nbnd, npwx, et, current_k, g2kin
   USE lsda_mod,               ONLY : nspin, lsda, isk, current_spin
-  USE orbm_module,            ONLY : ry2ha, ci, nbnd_occ, dudk_method
+  USE orbm_module,            ONLY : ry2ha, ci, nbnd_occ, dudk_method, vel_evc, evc1
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm, npool
@@ -34,9 +34,6 @@ SUBROUTINE calc_mag_dipole
   !-- local variables ----------------------------------------------------
   IMPLICIT NONE
 
-  ! the following three quantities are for norm-conserving PPs
-  complex(dp), allocatable, dimension(:,:,:) :: vel_evc       ! v_{k,k}|evc>
-  complex(dp), allocatable, dimension(:,:,:) :: evc1          ! du/dk
   ! temporary working array, same size as evc/evq
   complex(dp), allocatable :: aux(:,:)
   complex(dp), allocatable, dimension(:,:,:,:) :: ps
@@ -57,7 +54,6 @@ SUBROUTINE calc_mag_dipole
   !-----------------------------------------------------------------------
   ! allocate memory
   !-----------------------------------------------------------------------
-  allocate ( vel_evc(npwx*npol,nbnd,3), evc1(npwx*npol,nbnd,3) )
   allocate ( ps1(nbnd,nbnd,3,3), ps2(nbnd, nbnd, 3,3), ps3(nbnd,nbnd,nks,3) ) !, ps(nbnd,nbnd,nks,3) )
   allocate ( aux(npwx*npol, nbnd), mmat(nbnd,nbnd,nkstot,3) )
 
