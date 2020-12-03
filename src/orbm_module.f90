@@ -45,6 +45,11 @@ MODULE orbm_module
     ! eigenvalues and eigenfunctions at k+q
   REAL(DP), ALLOCATABLE :: etq(:,:)
   COMPLEX(DP), ALLOCATABLE :: evq(:,:)
+  
+  ! velocity operator applied to evc v|psi> 
+  ! derivative of evc w.r.t k  du/dk
+  COMPLEX(DP), ALLOCATABLE :: vel_evc(:,:,:)
+  COMPLEX(DP), ALLOCATABLE :: evc1(:,:,:)
 
   ! convergence threshold for diagonalizationa and greenfunction
   REAL(DP) :: conv_threshold
