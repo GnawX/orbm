@@ -20,7 +20,7 @@ SUBROUTINE calc_elec_dipole
   USE klist,                  ONLY : nks, nkstot, ngk
   USE wvfct,                  ONLY : nbnd, npwx, et
   USE lsda_mod,               ONLY : nspin
-  USE orbm_module,            ONLY : ry2ha, ci
+  USE orbm_module,            ONLY : ry2ha, ci, vel_evc
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm, npool
@@ -31,7 +31,6 @@ SUBROUTINE calc_elec_dipole
   IMPLICIT NONE
 
   ! the following three quantities are for norm-conserving PPs
-  complex(dp), allocatable, dimension(:,:,:) :: vel_evc       ! v_{k,k}|evc>
   complex(dp), allocatable, dimension(:,:,:,:) :: rmat_          ! 
   complex(dp), allocatable, dimension(:,:,:,:) :: rmat          !
   complex(dp), allocatable, dimension(:,:,:) :: ps            ! <n|v|m> 
@@ -48,7 +47,7 @@ SUBROUTINE calc_elec_dipole
   !-----------------------------------------------------------------------
   ! allocate memory
   !-----------------------------------------------------------------------
-  allocate ( vel_evc(npwx*npol,nbnd,3), ps(nbnd, nbnd, 3))
+  allocate ( ps(nbnd, nbnd, 3))
   allocate ( rmat(nbnd,nbnd,nkstot,3),  rmat_(nbnd,nbnd, nks, 3) )
 
   ! print memory estimate
