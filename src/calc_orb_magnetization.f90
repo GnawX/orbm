@@ -36,7 +36,7 @@ SUBROUTINE calc_orb_magnetization
   USE gvecw,                  ONLY : gcutw
   USE lsda_mod,               ONLY : lsda, current_spin, isk
   USE becmod,                 ONLY : becp, calbec, allocate_bec_type, deallocate_bec_type
-  USE orbm_module,           ONLY : q_orbm, iverbosity, alpha, &
+  USE orbm_module,           ONLY : q_orbm, iverbosity, alpha, vel_evc, evc1, &
                                      nbnd_occ, conv_threshold, restart_mode, ry2ha
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
@@ -46,9 +46,6 @@ SUBROUTINE calc_orb_magnetization
   !-- local variables ----------------------------------------------------
   IMPLICIT NONE
 
-  ! the following three quantities are for norm-conserving PPs
-  complex(dp), allocatable, dimension(:,:,:) :: vel_evc       ! v_{k,k}|evc>
-  complex(dp), allocatable, dimension(:,:,:) :: evc1          ! du/dk
   ! temporary working array, same size as evc/evq
   complex(dp), allocatable :: aux(:,:)
   complex(dp), allocatable :: hpsi(:)
@@ -74,7 +71,6 @@ SUBROUTINE calc_orb_magnetization
   !-----------------------------------------------------------------------
   ! allocate memory
   !-----------------------------------------------------------------------
-  allocate ( vel_evc(npwx*npol,nbnd,3), evc1(npwx*npol,nbnd,3) )
   allocate ( aux(npwx*npol,nbnd),  hpsi(npwx*npol) )
 
   ! print memory estimate
