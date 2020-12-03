@@ -1,4 +1,69 @@
-  SUBROUTINE dudk_covariant(ik, dudk)
+!-----------------------------------------------------------------------
+! Compute the k derivative of evc -> evc1
+!-----------------------------------------------------------------------
+SUBROUTINE compute_dudk(ik)
+  
+  USE kinds,                  ONLY : dp
+  USE cell_base,              ONLY : tpiba2
+  USE uspp,                   ONLY : nkb, vkb
+  USE gvect,                  ONLY : ngm, g
+  USE gvecw,                  ONLY : gcutw
+  USE klist,                  ONLY : nks, nkstot, ngk, xk, igk_k 
+  USE wvfct,                  ONLY : nbnd, npwx, et, current_k, g2kin
+  USE lsda_mod,               ONLY : nspin, lsda, isk, current_spin
+  USE orbm_module,            ONLY : evc1, vel_vec, dudk_method
+  USE noncollin_module,       ONLY : npol
+  USE io_global,              ONLY : stdout
+  
+  implicit none
+
+  COMPLEX(dp), allocatable :: aux(:,:)
+  integer :: ik, ipol, npw
+
+
+  write(stdout,*)
+  write(stdout,'(5X,''Computing du/dk '',$)')
+
+
+  if (trim(dudk_method) == 'covariant') then
+  
+     write(stdout,'(''(covariant derivative)'')') 
+     call dudk_covariant(ik, evc1)
+    
+  elseif (trim(dudk_method) == 'kdotp') then
+  
+     write(stdout,'(''(k \dot p perturbation)'')') 
+     allocate ( aux(npwx*npol, nbnd) )
+     npw = ngk(ik)
+     ! initialize k, spin, g2kin used in h_psi    
+     current_k = ik
+     if (lsda) current_spin = isk(ik)
+     call gk_sort(xk(1,ik), ngm, g, gcutw, npw, igk_k(1,ik), g2kin)
+     g2kin(:) = g2kin(:) * tpiba2
+     if (nkb > 0) call init_us_2(npw, igk_k(1,ik), xk(1,ik), vkb)
+    
+     do ipol = 1,3
+        aux(:,:) = vel_evc(:,:,ipol)
+        call greenfunction(ik, aux, evc1(1,1,ipol))
+     enddo
+       
+
+  elseif (trim(dudk_method) == 'sos') then
+  
+     write(stdout,'(''(sum over states)'')')
+     call dudk_sos(ik,evc1)
+
+  else
+    write(stdout,*)
+    call errore('compute_dudk', 'unknown du/dk method: '//trim(dudk_method), 1)
+  endif
+
+
+END SUBROUTINE compute_dudk
+  
+  
+  
+  SUBROUTINE dudk_covariant(ik, evc1)
   USE kinds,                ONLY : dp  
   USE cell_base,            ONLY : tpiba
   USE wvfct,                ONLY : nbnd, npwx
@@ -14,7 +79,6 @@
   IMPLICIT NONE
   complex(dp), external :: zdotc 
   complex(dp), allocatable :: overlap(:,:), evc0(:,:)
-  complex(dp) :: dudk(npwx*npol,nbnd,3)
   real(dp) :: q(3), delta_k
   integer :: ik, i, sig, ibnd, jbnd
   integer :: ipol, npw
@@ -32,7 +96,7 @@
 
   ! loop over crystal directions
   do ipol = 1, 3
-    dudk(:,:,ipol) = (0.d0,0.d0)
+    evc1(:,:,ipol) = (0.d0,0.d0)
     
     ! loop over +/-1
     do sig = -1, 1, 2
@@ -71,10 +135,10 @@
       !!      ik, ipol, sig
       if (noncolin) then
          CALL zgemm( 'N', 'N', npwx*npol, nbnd_occ(ik), nbnd_occ(ik), (1.d0,0.d0)*sig*0.5d0/(delta_k*tpiba), &
-         evq(1,1), npwx*npol, overlap(1,1), nbnd_occ(ik), (1.d0,0.d0), dudk(1,1,ipol), npwx*npol )
+         evq(1,1), npwx*npol, overlap(1,1), nbnd_occ(ik), (1.d0,0.d0), evc1(1,1,ipol), npwx*npol )
       else
          CALL zgemm( 'N', 'N', npw, nbnd_occ(ik), nbnd_occ(ik), (1.d0,0.d0)*sig*0.5d0/(delta_k*tpiba), &
-         evq(1,1), npwx, overlap(1,1), nbnd_occ(ik), (1.d0,0.d0), dudk(1,1,ipol), npwx )
+         evq(1,1), npwx, overlap(1,1), nbnd_occ(ik), (1.d0,0.d0), evc1(1,1,ipol), npwx )
       endif
       !do ibnd = 1, nbnd_occ(ik)
       !  do jbnd = 1, nbnd_occ(ik)
@@ -87,3 +151,7 @@
   enddo ! ipol
   deallocate(overlap)
 END SUBROUTINE dudk_covariant
+
+SUBROUTINE dudk_sos(ik,evc1)
+
+END SUBROUTINE dudk_soc
