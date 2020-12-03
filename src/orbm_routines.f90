@@ -126,8 +126,12 @@ SUBROUTINE orbm_allocate
     
   implicit none
   
-  ! wavefunction at k+q  
+  ! wavefunction at k+q 
+  ! du/dk
+  ! v|evc>
   allocate(evq(npwx*npol,nbnd))
+  allocate(evc1(npwx*npol,nbnd,3))
+  allocate(vel_evc(npwx*npol,nbnd,3))
 
   ! eigenvalues
   allocate(etq(nbnd,nkstot))
