@@ -11,7 +11,7 @@ SUBROUTINE compute_dudk(ik)
   USE klist,                  ONLY : nks, nkstot, ngk, xk, igk_k 
   USE wvfct,                  ONLY : nbnd, npwx, et, current_k, g2kin
   USE lsda_mod,               ONLY : nspin, lsda, isk, current_spin
-  USE orbm_module,            ONLY : evc1, vel_vec, dudk_method
+  USE orbm_module,            ONLY : evc1, vel_evc, dudk_method
   USE noncollin_module,       ONLY : npol
   USE io_global,              ONLY : stdout
   
@@ -28,7 +28,7 @@ SUBROUTINE compute_dudk(ik)
   if (trim(dudk_method) == 'covariant') then
   
      write(stdout,'(''(covariant derivative)'')') 
-     call dudk_covariant(ik, evc1)
+     call dudk_covariant(ik)
     
   elseif (trim(dudk_method) == 'kdotp') then
   
@@ -51,7 +51,7 @@ SUBROUTINE compute_dudk(ik)
   elseif (trim(dudk_method) == 'sos') then
   
      write(stdout,'(''(sum over states)'')')
-     call dudk_sos(ik,evc1)
+     call dudk_sos(ik)
 
   else
     write(stdout,*)
@@ -63,7 +63,7 @@ END SUBROUTINE compute_dudk
   
   
   
-  SUBROUTINE dudk_covariant(ik, evc1)
+  SUBROUTINE dudk_covariant(ik)
   USE kinds,                ONLY : dp  
   USE cell_base,            ONLY : tpiba
   USE wvfct,                ONLY : nbnd, npwx
@@ -152,7 +152,7 @@ END SUBROUTINE compute_dudk
   deallocate(overlap)
 END SUBROUTINE dudk_covariant
 
-SUBROUTINE dudk_sos(ik,evc1)
+SUBROUTINE dudk_sos(ik)
 
    USE kinds,                       ONLY : DP
    USE wvfct,                       ONLY : nbnd, et, npwx
@@ -164,7 +164,7 @@ SUBROUTINE dudk_sos(ik,evc1)
    USE klist,                       ONLY : ngk
 
    IMPLICIT none
-   INTEGER :: ik
+   INTEGER :: ik, ipol
    ! local
    INTEGER :: npw, ibnd, jbnd
    COMPLEX(DP), ALLOCATABLE :: ps(:,:)
@@ -173,14 +173,16 @@ SUBROUTINE dudk_sos(ik,evc1)
    ALLOCATE( ps(nbnd, nbnd) )
    
    npw = ngk(ik)
+
+   DO ipol = 1,3
    
    if (noncolin) then
      
       CALL zgemm('C', 'N', nbnd, nbnd, npwx*npol, (1.d0,0.d0), evc(1,1), &
-                    npwx*npol, vel_evc(1,1), npwx*npol, (0.d0,0.d0), ps(1,1), nbnd)
+                    npwx*npol, vel_evc(1,1,ipol), npwx*npol, (0.d0,0.d0), ps(1,1), nbnd)
    else
       CALL zgemm('C', 'N', nbnd, nbnd, npw, (1.d0,0.d0), evc(1,1), &
-                    npwx, vel_evc(1,1), npwx, (0.d0,0.d0), ps(1,1), nbnd)
+                    npwx, vel_evc(1,1,ipol), npwx, (0.d0,0.d0), ps(1,1), nbnd)
    endif
  
 #ifdef __MPI
@@ -200,13 +202,15 @@ SUBROUTINE dudk_sos(ik,evc1)
    if (noncolin) then
    
        CALL zgemm( 'N', 'N', npwx*npol, nbnd, nbnd, (1.d0,0.d0), &
-         evc(1,1), npwx*npol, ps(1,1), nbnd, (0.d0,0.d0), evc1(1,1), npwx*npol )
+         evc(1,1), npwx*npol, ps(1,1), nbnd, (0.d0,0.d0), evc1(1,1,ipol), npwx*npol )
    else
        CALL zgemm( 'N', 'N', npw, nbnd, nbnd, (1.d0,0.d0), &
-         evc(1,1), npwx, ps(1,1), nbnd, (0.d0,0.d0), evc1(1,1), npwx )
+         evc(1,1), npwx, ps(1,1), nbnd, (0.d0,0.d0), evc1(1,1,ipol), npwx )
          
    endif
+
+   ENDDO
    
    DEALLOCATE(ps)
    
-END SUBROUTINE dudk_soc
+END SUBROUTINE dudk_sos

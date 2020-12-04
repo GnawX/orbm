@@ -143,11 +143,21 @@ SUBROUTINE calc_mag_dipole
     call mp_sum(ps1, intra_pool_comm)
     !call mp_sum(ps2, intra_pool_comm)
 #endif 
-    ps2 = CONJG(ps1)
+    !ps2 = CONJG(ps1)
     ! in unit of Bohr mag 
-    ps3(:,:,ik,1) = ( ps1(:,:,2,3) - ps1(:,:,3,2) + ps2(:,:,2,3) - ps2(:,:,3,2) )/2 *ci 
-    ps3(:,:,ik,2) = ( ps1(:,:,3,1) - ps1(:,:,1,3) + ps2(:,:,3,1) - ps2(:,:,1,3) )/2 *ci 
-    ps3(:,:,ik,3) = ( ps1(:,:,1,2) - ps1(:,:,2,1) + ps2(:,:,1,2) - ps2(:,:,2,1) )/2 *ci 
+    do ibnd = 1, nbnd
+       do jbnd = 1, nbnd
+          ps3(jbnd,ibnd,ik,1) = (ps1(jbnd,ibnd,2,3)-ps1(jbnd,ibnd,3,2) - &
+                                 CONJG(ps1(ibnd,jbnd,2,3)-ps1(ibnd,jbnd,3,2)))/2*ci 
+          ps3(jbnd,ibnd,ik,2) = (ps1(jbnd,ibnd,3,1)-ps1(jbnd,ibnd,1,3) - &
+                                 CONJG(ps1(ibnd,jbnd,3,1)-ps1(ibnd,jbnd,1,3)))/2*ci 
+          ps3(jbnd,ibnd,ik,3) = (ps1(jbnd,ibnd,1,2)-ps1(jbnd,ibnd,2,1) - &
+                                 CONJG(ps1(ibnd,jbnd,1,2)-ps1(ibnd,jbnd,2,1)))/2*ci
+       enddo
+    enddo 
+    !ps3(:,:,ik,1) = ( ps1(:,:,2,3) - ps1(:,:,3,2) + ps2(:,:,2,3) - ps2(:,:,3,2) )/2 *ci 
+    !ps3(:,:,ik,2) = ( ps1(:,:,3,1) - ps1(:,:,1,3) + ps2(:,:,3,1) - ps2(:,:,1,3) )/2 *ci 
+    !ps3(:,:,ik,3) = ( ps1(:,:,1,2) - ps1(:,:,2,1) + ps2(:,:,1,2) - ps2(:,:,2,1) )/2 *ci 
 
     !ps3(:,:,ik,1) = ( ps1(:,:,2,3)  - ps2(:,:,3,2) ) *ci 
     !ps3(:,:,ik,2) = ( ps1(:,:,3,1)  - ps2(:,:,1,3) ) *ci 
