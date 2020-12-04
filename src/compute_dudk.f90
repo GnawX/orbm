@@ -154,4 +154,59 @@ END SUBROUTINE dudk_covariant
 
 SUBROUTINE dudk_sos(ik,evc1)
 
+   USE kinds,                       ONLY : DP
+   USE wvfct,                       ONLY : nbnd, et, npwx
+   USE wavefunctions,               ONLY : evc
+   USE noncollin_module,            ONLY : noncolin, npol
+   USE orbm_module,                 ONLY : vel_evc, evc1, ry2ha
+   USE mp_pools,                    ONLY : intra_pool_comm
+   USE mp,                          ONLY : mp_sum
+   USE klist,                       ONLY : ngk
+
+   IMPLICIT none
+   INTEGER :: ik
+   ! local
+   INTEGER :: npw, ibnd, jbnd
+   COMPLEX(DP), ALLOCATABLE :: ps(:,:)
+   REAL(DP), PARAMETER :: delta = 1.d-5
+   
+   ALLOCATE( ps(nbnd, nbnd) )
+   
+   npw = ngk(ik)
+   
+   if (noncolin) then
+     
+      CALL zgemm('C', 'N', nbnd, nbnd, npwx*npol, (1.d0,0.d0), evc(1,1), &
+                    npwx*npol, vel_evc(1,1), npwx*npol, (0.d0,0.d0), ps(1,1), nbnd)
+   else
+      CALL zgemm('C', 'N', nbnd, nbnd, npw, (1.d0,0.d0), evc(1,1), &
+                    npwx, vel_evc(1,1), npwx, (0.d0,0.d0), ps(1,1), nbnd)
+   endif
+ 
+#ifdef __MPI
+   call mp_sum(ps, intra_pool_comm)
+#endif
+
+   DO ibnd =  1, nbnd
+      DO jbnd = 1, nbnd
+         IF ( abs(et(ibnd,ik)-et(jbnd,ik)) < delta )  THEN
+            ps(jbnd, ibnd) = (0.d0,0.d0)
+         ELSE
+            ps(jbnd, ibnd) = ps(jbnd, ibnd)/(et(ibnd,ik)-et(jbnd,ik))/ry2ha
+         ENDIF
+      ENDDO
+   ENDDO
+   
+   if (noncolin) then
+   
+       CALL zgemm( 'N', 'N', npwx*npol, nbnd, nbnd, (1.d0,0.d0), &
+         evc(1,1), npwx*npol, ps(1,1), nbnd, (0.d0,0.d0), evc1(1,1), npwx*npol )
+   else
+       CALL zgemm( 'N', 'N', npw, nbnd, nbnd, (1.d0,0.d0), &
+         evc(1,1), npwx, ps(1,1), nbnd, (0.d0,0.d0), evc1(1,1), npwx )
+         
+   endif
+   
+   DEALLOCATE(ps)
+   
 END SUBROUTINE dudk_soc
