@@ -93,28 +93,7 @@ SUBROUTINE calc_mag_dipole
     enddo
     
     ! calculate du/dk
-    if (trim(dudk_method)=='kdotp') then
-    
-       ! initialize k, spin, g2kin used in h_psi    
-       current_k = ik
-       if (lsda) current_spin = isk(ik)
-       call gk_sort(xk(1,ik), ngm, g, gcutw, npw, igk_k(1,ik), g2kin)
-       g2kin(:) = g2kin(:) * tpiba2
-       if (nkb > 0) call init_us_2(npw, igk_k(1,ik), xk(1,ik), vkb)
-    
-       do i = 1,3
-          aux(:,:) = vel_evc(:,:,i)
-          call greenfunction(ik, aux, evc1(1,1,i))
-       enddo
-       
-    elseif (trim(dudk_method)=='covariant' ) then
-       
-       call dudk_covariant(ik, evc1(:,:,:))
-       
-    else
-       write(stdout,*)
-       call errore('compute_dudk', 'unknown du/dk method: '//trim(dudk_method), 1)
-    endif
+    call compute_dudk(ik)
     
     !vel_evc(:,:,:) = (0.d0,0.d0)
     !do i = 1,3
@@ -145,14 +124,14 @@ SUBROUTINE calc_mag_dipole
      
              CALL zgemm('C', 'N', nbnd, nbnd, npwx*npol, (1.d0,0.d0), evc1(1,1,j), &
                     npwx*npol, vel_evc(1,1,i), npwx*npol, (0.d0,0.d0), ps1(1,1,j,i), nbnd)
-             CALL zgemm('C', 'N', nbnd, nbnd, npwx*npol, (1.d0,0.d0), vel_evc(1,1,j), &
-                    npwx*npol, evc1(1,1,i), npwx*npol, (0.d0,0.d0), ps2(1,1,j,i), nbnd)
+             !CALL zgemm('C', 'N', nbnd, nbnd, npwx*npol, (1.d0,0.d0), vel_evc(1,1,j), &
+             !       npwx*npol, evc1(1,1,i), npwx*npol, (0.d0,0.d0), ps2(1,1,j,i), nbnd)
           else
        
              CALL zgemm('C', 'N', nbnd, nbnd, npw, (1.d0,0.d0), evc1(1,1,j), &
                     npwx, vel_evc(1,1,i), npwx, (0.d0,0.d0), ps1(1,1,j,i), nbnd)
-             CALL zgemm('C', 'N', nbnd, nbnd, npw, (1.d0,0.d0), vel_evc(1,1,j), &
-                    npwx, evc1(1,1,i), npwx, (0.d0,0.d0), ps2(1,1,j,i), nbnd)
+             !CALL zgemm('C', 'N', nbnd, nbnd, npw, (1.d0,0.d0), vel_evc(1,1,j), &
+             !       npwx, evc1(1,1,i), npwx, (0.d0,0.d0), ps2(1,1,j,i), nbnd)
              
           endif
           
@@ -162,9 +141,9 @@ SUBROUTINE calc_mag_dipole
 #ifdef __MPI
     !call mp_sum(ps, intra_pool_comm)
     call mp_sum(ps1, intra_pool_comm)
-    call mp_sum(ps2, intra_pool_comm)
+    !call mp_sum(ps2, intra_pool_comm)
 #endif 
-   
+    ps2 = CONJG(ps1)
     ! in unit of Bohr mag 
     ps3(:,:,ik,1) = ( ps1(:,:,2,3) - ps1(:,:,3,2) + ps2(:,:,2,3) - ps2(:,:,3,2) )/2 *ci 
     ps3(:,:,ik,2) = ( ps1(:,:,3,1) - ps1(:,:,1,3) + ps2(:,:,3,1) - ps2(:,:,1,3) )/2 *ci 
