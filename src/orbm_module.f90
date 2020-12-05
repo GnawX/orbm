@@ -35,6 +35,12 @@ MODULE orbm_module
   
   ! imaginary unit
   COMPLEX(DP), PARAMETER :: ci = (0.0_DP, 1.0_DP)
+  
+  ! pi
+  REAL(DP), PARAMETER :: pi = 3.14159265_DP
+  
+  ! small number of energy difference
+  REAL(DP), PARAMETER :: eta = 1.e-5_DP 
  
   ! number of occupied bands at each k-point
   INTEGER :: nbnd_occ(npk)
