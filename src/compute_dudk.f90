@@ -158,7 +158,7 @@ SUBROUTINE dudk_sos(ik)
    USE wvfct,                       ONLY : nbnd, et, npwx
    USE wavefunctions,               ONLY : evc
    USE noncollin_module,            ONLY : noncolin, npol
-   USE orbm_module,                 ONLY : vel_evc, evc1, ry2ha
+   USE orbm_module,                 ONLY : vel_evc, evc1, ry2ha, eta
    USE mp_pools,                    ONLY : intra_pool_comm
    USE mp,                          ONLY : mp_sum
    USE klist,                       ONLY : ngk
@@ -168,7 +168,6 @@ SUBROUTINE dudk_sos(ik)
    ! local
    INTEGER :: npw, ibnd, jbnd
    COMPLEX(DP), ALLOCATABLE :: ps(:,:)
-   REAL(DP), PARAMETER :: delta = 1.d-5
    
    ALLOCATE( ps(nbnd, nbnd) )
    
@@ -191,7 +190,7 @@ SUBROUTINE dudk_sos(ik)
 
    DO ibnd =  1, nbnd
       DO jbnd = 1, nbnd
-         IF ( abs(et(ibnd,ik)-et(jbnd,ik)) < delta )  THEN
+         IF ( abs(et(ibnd,ik)-et(jbnd,ik)) < eta )  THEN
             ps(jbnd, ibnd) = (0.d0,0.d0)
          ELSE
             ps(jbnd, ibnd) = ps(jbnd, ibnd)/(et(ibnd,ik)-et(jbnd,ik))/ry2ha
