@@ -20,7 +20,7 @@ SUBROUTINE calc_elec_dipole
   USE klist,                  ONLY : nks, nkstot, ngk
   USE wvfct,                  ONLY : nbnd, npwx, et
   USE lsda_mod,               ONLY : nspin
-  USE orbm_module,            ONLY : ry2ha, ci, vel_evc
+  USE orbm_module,            ONLY : ry2ha, ci, vel_evc, eta
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm, npool
@@ -34,7 +34,6 @@ SUBROUTINE calc_elec_dipole
   complex(dp), allocatable, dimension(:,:,:,:) :: rmat_          ! 
   complex(dp), allocatable, dimension(:,:,:,:) :: rmat          !
   complex(dp), allocatable, dimension(:,:,:) :: ps            ! <n|v|m> 
-  real(dp) :: de_thr = 1.0d-5
 
   integer :: ik, ios, iunout
   integer :: i, ibnd, jbnd
@@ -107,7 +106,7 @@ SUBROUTINE calc_elec_dipole
     
     do ibnd = 1, nbnd
        do jbnd = 1, nbnd
-          if ( abs(et(ibnd,ik)-et(jbnd,ik)) < de_thr )  then
+          if ( abs(et(ibnd,ik)-et(jbnd,ik)) < eta )  then
              rmat_(jbnd, ibnd, ik, :) = (0.d0,0.d0)
           else
              rmat_(jbnd, ibnd, ik, :) = ps(jbnd, ibnd, :)*ci/ & 
