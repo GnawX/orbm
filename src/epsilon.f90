@@ -44,16 +44,16 @@ SUBROUTINE epsilon
   integer :: npw
 
  
-  call start_clock('calc_elec_dipole')
+  call start_clock('epsilon')
   !-----------------------------------------------------------------------
   ! allocate memory
   !-----------------------------------------------------------------------
-  allocate ( vmat(nbnd, nbnd, 3), vel_vec(nbnd, nbnd, 3))
+  allocate ( vmat(nbnd, nbnd, 3), vel_evc(npwx*npol, nbnd, 3))
 
   ! print memory estimate
   call orbm_memory_report
 
-  write(stdout, '(5X,''Computing the dielectric function (e bohr):'',$)')
+  write(stdout, '(5X,''Computing the dielectric function:'',$)')
   write(stdout, *)
  
   do i = 1, ne
