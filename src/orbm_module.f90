@@ -90,15 +90,6 @@ MODULE orbm_module
   ! smearing of the delta function
   REAL(DP) :: sigma
 
-CONTAINS
-  
-  FUNCTION delta(x) RESULT(y)
-     IMPLICIT NONE
-     REAL(DP), INTENT(IN) :: x
-     REAL(DP) :: y
-     sigma = sigma/ry2ev*ry2ha
-     y = EXP(-(x/sigma)**2/2)/sigma/SQRT(2*pi)
-  END FUNCTION
 !-----------------------------------------------------------------------
 END MODULE orbm_module
 !-----------------------------------------------------------------------
