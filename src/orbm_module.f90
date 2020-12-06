@@ -32,6 +32,7 @@ MODULE orbm_module
  
   ! rydberg to Hartree
   REAL(DP), PARAMETER :: ry2ha = 0.5_DP
+  REAL(DP), PARAMETER :: ry2ev = 13.6056980659_DP
   
   ! imaginary unit
   COMPLEX(DP), PARAMETER :: ci = (0.0_DP, 1.0_DP)
