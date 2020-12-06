@@ -54,6 +54,7 @@ SUBROUTINE calc_mag_dipole
   !-----------------------------------------------------------------------
   ! allocate memory
   !-----------------------------------------------------------------------
+  allocate ( vel_evc(npwx*npol, nbnd, 3), evc1(npwx*npol, nbnd, 3) )
   allocate ( ps1(nbnd,nbnd,3,3), ps2(nbnd, nbnd, 3,3), ps3(nbnd,nbnd,nks,3) ) !, ps(nbnd,nbnd,nks,3) )
   allocate ( aux(npwx*npol, nbnd), mmat(nbnd,nbnd,nkstot,3) )
 
