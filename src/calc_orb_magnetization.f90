@@ -71,7 +71,7 @@ SUBROUTINE calc_orb_magnetization
   !-----------------------------------------------------------------------
   ! allocate memory
   !-----------------------------------------------------------------------
-  allocate ( vel_vec(npwx*npol,nbnd, 3), evc1(npwx*npol, nbnd, 3))
+  allocate ( vel_evc(npwx*npol,nbnd, 3), evc1(npwx*npol, nbnd, 3))
   allocate ( aux(npwx*npol,nbnd),  hpsi(npwx*npol) )
 
   ! print memory estimate
