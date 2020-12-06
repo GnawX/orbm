@@ -18,7 +18,8 @@ PROGRAM orbm_main
   USE kinds,           ONLY : DP
   USE mp,              ONLY : mp_bcast
   USE cell_base,       ONLY : tpiba
-  USE orbm_module,    ONLY : job, q_orbm, max_seconds
+  USE orbm_module,     ONLY : job, q_orbm, max_seconds, emin, emax, sigma, &
+                              ry2ev
   USE check_stop  ,    ONLY : check_stop_init
   USE control_flags,   ONLY : io_level, gamma_only, use_para_diag
   USE mp_global,       ONLY : mp_startup, nproc_pool_file
@@ -103,6 +104,9 @@ PROGRAM orbm_main
   ! convert q_orbm into units of tpiba
   q_orbm = q_orbm / tpiba
   
+  emin = emin / ry2ev / 2.d0
+  emax = emax / ry2ev / 2.d0
+  sigma = sigma /ry2ev/ 2.d0
 
   ! calculation
   select case ( trim(job) )
