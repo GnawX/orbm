@@ -46,7 +46,7 @@ SUBROUTINE calc_elec_dipole
   !-----------------------------------------------------------------------
   ! allocate memory
   !-----------------------------------------------------------------------
-  allocate ( ps(nbnd, nbnd, 3), vel_vec(npwx*npol, nbnd, 3))
+  allocate ( ps(nbnd, nbnd, 3), vel_evc(npwx*npol, nbnd, 3))
   allocate ( rmat(nbnd,nbnd,nkstot,3),  rmat_(nbnd,nbnd, nks, 3) )
 
   ! print memory estimate
