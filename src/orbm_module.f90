@@ -86,6 +86,8 @@ MODULE orbm_module
   REAL(DP) :: emin, emax
   INTEGER  :: ne
   
+  ! smearing of the delta function
+  REAL(DP) :: sigma
 
 !-----------------------------------------------------------------------
 END MODULE orbm_module
