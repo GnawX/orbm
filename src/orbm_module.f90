@@ -82,6 +82,10 @@ MODULE orbm_module
   ! method to calculate du/dk
   CHARACTER(80) :: dudk_method
   
+  ! energy grid for spectral function
+  REAL(DP) :: emin, emax
+  INTEGER  :: ne
+  
 
 !-----------------------------------------------------------------------
 END MODULE orbm_module
