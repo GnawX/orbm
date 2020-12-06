@@ -114,6 +114,8 @@ PROGRAM orbm_main
      call calc_orb_magnetization 
   case ( 'elec_dipole' )
      call calc_elec_dipole
+  case ( 'epsilon' )
+     call epsilon
   case ( 'mag_dipole' )
      call calc_mag_dipole
   case ( 'elec_quadrupole' )
