@@ -12,16 +12,17 @@ SUBROUTINE epsilon
   ! This routine calculates the dielectric function
   !
   USE kinds,                  ONLY : dp
+  USE constants,              ONLY : pi
   USE cell_base,              ONLY : omega
   USE io_global,              ONLY : stdout, ionode, ionode_id
   USE io_files,               ONLY : nwordwfc, iunwfc
   USE wavefunctions,          ONLY : evc
   USE noncollin_module,       ONLY : npol, noncolin
-  USE klist,                  ONLY : nks, nkstot, ngk
+  USE klist,                  ONLY : nks, nkstot, ngk, wk
   USE wvfct,                  ONLY : nbnd, npwx, et
   USE lsda_mod,               ONLY : nspin
-  USE orbm_module,            ONLY : ry2ha, ci, vel_evc, eta, emin, emax, &
-                                     ne, pi
+  USE orbm_module,            ONLY : ry2ha, ci, vel_evc, eta, etmin, etmax, &
+                                     net, nbnd_occ, sigma, ry2ev
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm, npool
@@ -34,11 +35,11 @@ SUBROUTINE epsilon
   ! the following three quantities are for norm-conserving PPs
   complex(dp), allocatable, dimension(:,:,:) :: vmat            ! <n|v|m> 
   
-  real(dp) :: eps_imag(ne, 6)
+  real(dp) :: eps_imag(net, 6)
   
   integer :: ik, ios, iunout
   integer :: i, j, ibnd, jbnd, n, ie
-  real(dp) :: det, egrid(ne), pref
+  real(dp) :: det, egrid(net), pref
   real(dp), external :: get_clock, delta
   integer, external :: find_free_unit
   integer :: npw
@@ -56,8 +57,8 @@ SUBROUTINE epsilon
   write(stdout, '(5X,''Computing the dielectric function:'',$)')
   write(stdout, *)
  
-  do i = 1, ne
-     egrid(i) = emin + (emax-emin)/(ne-1)*(i-1)
+  do i = 1, net
+     egrid(i) = etmin + (etmax-etmin)/(net-1)*(i-1)
   enddo
   eps_imag = 0.d0 
   !====================================================================
@@ -92,24 +93,25 @@ SUBROUTINE epsilon
    
     
 #ifdef __MPI
-    call mp_sum(ps, intra_pool_comm)
+    call mp_sum(vmat, intra_pool_comm)
 #endif 
     
     do ibnd = 1, nbnd_occ(ik)
        do jbnd = nbnd_occ(ik)+1, nbnd
           det = (et(jbnd,ik) - et(ibnd,ik))*ry2ha   
-          if (det < emax + 8*sigma) then
+          if (det > etmin - 8*sigma .and. det < etmax + 8*sigma) then
           ! xx xy xz yy yz zz
              n = 0
              do i = 1,3
                 do j = i,3
                    n = n + 1
-                   do ie = 1, ne
-                      if (abs(det-egrid(ie)) < 8*sigma) then
-                         pref = 4*pi**2/omega/egrid(ie)**2
+                   do ie = 1, net
+                      !if (abs(det-egrid(ie)) < 8*sigma) then
+                         pref = 4*pi**2/omega/egrid(ie)**2*wk(ik)
+                         !pref = 4*pi**2/omega/det**2*wk(ik)
                          eps_imag(ie,n) = eps_imag(ie,n) + pref*CONJG(vmat(jbnd,ibnd,j))* &
                                           vmat(jbnd,ibnd,i)*delta(det-egrid(ie))
-                      endif
+                      !endif
                    enddo
                 enddo
              enddo
@@ -135,10 +137,10 @@ SUBROUTINE epsilon
   if ( ios/=0 ) call errore ('epsilon', 'Opening file epsilon_imag.dat', abs (ios) )
 
   if (ionode) then
-     write(iunout, '7A10') 'ENERGY','XX','YY','ZZ','XY','XZ','YZ' 
-     do ie = 1, ne
+     write(iunout, '(7A10)') '#   ENERGY','XX','YY','ZZ','XY','YZ','ZX' 
+     do ie = 1, net
         write(iunout, '(7F10.4)') egrid(ie)*ry2ev/ry2ha, eps_imag(ie,1),eps_imag(ie,4), &
-                       eps_imag(ie,6), eps_imag(ie,2),eps_imag(ie,3),eps_imag(ie,5)
+                       eps_imag(ie,6), eps_imag(ie,2),eps_imag(ie,5),eps_imag(ie,3)
      enddo
      close(iunout)
   endif

@@ -1,5 +1,7 @@
   FUNCTION delta(x) RESULT(y)
-     USE orbm_module
+     USE kinds,       ONLY : DP
+     USE orbm_module, ONLY : sigma
+     USE constants,   ONLY : pi
      IMPLICIT NONE
      REAL(DP), INTENT(IN) :: x
      REAL(DP) :: y

@@ -12,8 +12,7 @@ MODULE orbm_module
   ! ... This module contains the variables used for GIPAW calculations
   !
   USE kinds, ONLY : DP
-  USE constants, ONLY : a0_to_cm => bohr_radius_cm
-  USE parameters, ONLY : npk, ntypx
+  USE parameters, ONLY : npk
   
   IMPLICIT NONE
   SAVE
@@ -23,8 +22,6 @@ MODULE orbm_module
   ! fine structure constant alpha (c = 1/alpha)
   REAL(DP), PARAMETER :: alpha = 1.0_dp / 137.03599911_dp
   
-  ! avogadro number
-  REAL(DP), PARAMETER :: avogadro = 6.022142e23_dp
   
   ! g_e and gprime
   REAL(DP), PARAMETER :: g_e = 2.0023192778_DP
@@ -37,8 +34,6 @@ MODULE orbm_module
   ! imaginary unit
   COMPLEX(DP), PARAMETER :: ci = (0.0_DP, 1.0_DP)
   
-  ! pi
-  REAL(DP), PARAMETER :: pi = 3.14159265_DP
   
   ! small number of energy difference
   REAL(DP), PARAMETER :: eta = 1.e-5_DP 
@@ -84,8 +79,8 @@ MODULE orbm_module
   CHARACTER(80) :: dudk_method
   
   ! energy grid for spectral function
-  REAL(DP) :: emin, emax
-  INTEGER  :: ne
+  REAL(DP) :: etmin, etmax
+  INTEGER  :: net
   
   ! smearing of the delta function
   REAL(DP) :: sigma
