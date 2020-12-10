@@ -79,8 +79,8 @@ MODULE orbm_module
   CHARACTER(80) :: dudk_method
   
   ! energy grid for spectral function
-  REAL(DP) :: etmin, etmax
-  INTEGER  :: net
+  REAL(DP) :: wmin, wmax
+  INTEGER  :: nw
   
   ! smearing of the delta function
   REAL(DP) :: sigma
