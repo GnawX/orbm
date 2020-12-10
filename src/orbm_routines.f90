@@ -26,7 +26,7 @@ SUBROUTINE orbm_readin()
   character(len=256), external :: trimcheck
   character(len=80) :: diagonalization, verbosity
   namelist /inputorbm/ job, prefix, tmp_dir, conv_threshold, restart_mode, &
-                        q_orbm, iverbosity,  dudk_method, etmin, etmax, net, &
+                        q_orbm, iverbosity,  dudk_method, wmin, wmax, nw, &
                         spline_ps, isolve, max_seconds, verbosity, sigma
                         
 
@@ -49,9 +49,9 @@ SUBROUTINE orbm_readin()
   isolve = 0
   max_seconds  =  1.d7
   dudk_method = 'kdotp'
-  etmin = 0.d0
-  etmax = 20.d0
-  net = 1001
+  wmin = 0.d0
+  wmax = 20.d0
+  nw = 1001
   sigma = 0.1
 
   ! read input    
@@ -113,9 +113,9 @@ SUBROUTINE orbm_bcast_input
   call mp_bcast(dudk_method, root, world_comm)
   call mp_bcast(max_seconds, root, world_comm)
   call mp_bcast(restart_mode, root, world_comm)
-  call mp_bcast(etmin, root, world_comm)
-  call mp_bcast(etmax, root, world_comm)
-  call mp_bcast(net, root, world_comm)
+  call mp_bcast(wmin, root, world_comm)
+  call mp_bcast(wmax, root, world_comm)
+  call mp_bcast(nw, root, world_comm)
   call mp_bcast(sigma, root, world_comm)
 
 END SUBROUTINE orbm_bcast_input
