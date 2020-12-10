@@ -21,13 +21,14 @@ SUBROUTINE epsilon
   USE klist,                  ONLY : nks, nkstot, ngk, wk
   USE wvfct,                  ONLY : nbnd, npwx, et
   USE lsda_mod,               ONLY : nspin
-  USE orbm_module,            ONLY : ry2ha, ci, vel_evc, eta, etmin, etmax, &
-                                     net, nbnd_occ, sigma, ry2ev
+  USE orbm_module,            ONLY : ry2ha, ci, vel_evc, eta, wmin, wmax, &
+                                     nw, nbnd_occ, sigma, ry2ev
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm, npool
   USE mp,                     ONLY : mp_sum, mp_bcast
   USE mp_world,               ONLY : world_comm
+  USE symme,                  ONLY : symmatrix
 
   !-- local variables ----------------------------------------------------
   IMPLICIT NONE
@@ -35,11 +36,11 @@ SUBROUTINE epsilon
   ! the following three quantities are for norm-conserving PPs
   complex(dp), allocatable, dimension(:,:,:) :: vmat            ! <n|v|m> 
   
-  real(dp) :: eps_imag(net, 6)
+  real(dp) :: eps2(nw, 3, 3)
   
   integer :: ik, ios, iunout
   integer :: i, j, ibnd, jbnd, n, ie
-  real(dp) :: det, egrid(net), pref
+  real(dp) :: det, wgrid(nw), pref
   real(dp), external :: get_clock, delta
   integer, external :: find_free_unit
   integer :: npw
@@ -57,10 +58,10 @@ SUBROUTINE epsilon
   write(stdout, '(5X,''Computing the dielectric function:'',$)')
   write(stdout, *)
  
-  do i = 1, net
-     egrid(i) = etmin + (etmax-etmin)/(net-1)*(i-1)
+  do i = 1, nw
+     wgrid(i) = wmin + (wmax-wmin)/(nw-1)*(i-1)
   enddo
-  eps_imag = 0.d0 
+  eps2 = 0.d0 
   !====================================================================
   ! loop over k-points on the pool
   !====================================================================
@@ -95,36 +96,43 @@ SUBROUTINE epsilon
 #ifdef __MPI
     call mp_sum(vmat, intra_pool_comm)
 #endif 
-    
-    do ibnd = 1, nbnd_occ(ik)
-       do jbnd = nbnd_occ(ik)+1, nbnd
-          det = (et(jbnd,ik) - et(ibnd,ik))*ry2ha   
-          if (det > etmin - 8*sigma .and. det < etmax + 8*sigma) then
-          ! xx xy xz yy yz zz
-             n = 0
-             do i = 1,3
-                do j = i,3
-                   n = n + 1
-                   do ie = 1, net
-                      !if (abs(det-egrid(ie)) < 8*sigma) then
-                         pref = 4*pi**2/omega/egrid(ie)**2*wk(ik)
-                         !pref = 4*pi**2/omega/det**2*wk(ik)
-                         eps_imag(ie,n) = eps_imag(ie,n) + pref*CONJG(vmat(jbnd,ibnd,j))* &
-                                          vmat(jbnd,ibnd,i)*delta(det-egrid(ie))
-                      !endif
-                   enddo
+
+    do ie = 1, nw
+       pref = 4*pi**2/omega/wgrid(ie)**2*wk(ik)
+       
+       do i = 1, 3
+          do j = 1, 3
+          
+             do ibnd = 1, nbnd_occ(ik)
+                do jbnd = 1, nbnd_occ(ik)
+                
+                   det = (et(jbnd,ik) - et(ibnd,ik))*ry2ha
+                   if (det > wmin - 8*sigma .and. det < wmax + 8*sigma &
+                       .and. det-wgrid(ie) < 8*sigma) then
+                       
+                       eps2(ie, j, i) = eps2(ie, j, i) + pref* &
+                               CONJG(vmat(jbnd, ibnd, j))*vmat(jbnd, ibnd, i)* &
+                               delta(det-wgrid(ie))
+                   endif
+                   
                 enddo
              enddo
-          endif        
+             
+          enddo
        enddo
+       
     enddo
-    
+                    
 
   enddo ! ik
   
 #ifdef __MPI
-    call mp_sum(eps_imag, inter_pool_comm)
+    call mp_sum(eps2, inter_pool_comm)
 #endif 
+  
+  do ie = 1, nw
+     call symmatrix( eps(ie, :, :) )
+  enddo
   
   ios = 0
   if ( ionode ) then
@@ -139,8 +147,8 @@ SUBROUTINE epsilon
   if (ionode) then
      write(iunout, '(7A10)') '#   ENERGY','XX','YY','ZZ','XY','YZ','ZX' 
      do ie = 1, net
-        write(iunout, '(7F10.4)') egrid(ie)*ry2ev/ry2ha, eps_imag(ie,1),eps_imag(ie,4), &
-                       eps_imag(ie,6), eps_imag(ie,2),eps_imag(ie,5),eps_imag(ie,3)
+        write(iunout, '(7F10.4)') wgrid(ie)*ry2ev/ry2ha, eps2(ie,1,1),eps2(ie,2,2), &
+                       eps2(ie,3,3), eps2(ie,1,2),eps2(ie,2,3),eps2(ie,3,1)
      enddo
      close(iunout)
   endif
