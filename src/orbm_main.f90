@@ -18,7 +18,7 @@ PROGRAM orbm_main
   USE kinds,           ONLY : DP
   USE mp,              ONLY : mp_bcast
   USE cell_base,       ONLY : tpiba
-  USE orbm_module,     ONLY : job, q_orbm, max_seconds, etmin, etmax, sigma, &
+  USE orbm_module,     ONLY : job, q_orbm, max_seconds, wmin, wmax, sigma, &
                               ry2ev
   USE check_stop  ,    ONLY : check_stop_init
   USE control_flags,   ONLY : io_level, gamma_only, use_para_diag
@@ -104,8 +104,8 @@ PROGRAM orbm_main
   ! convert q_orbm into units of tpiba
   q_orbm = q_orbm / tpiba
   
-  etmin = etmin / ry2ev / 2.d0
-  etmax = etmax / ry2ev / 2.d0
+  wmin = wmin / ry2ev / 2.d0
+  wmax = wmax / ry2ev / 2.d0
   sigma = sigma /ry2ev/ 2.d0
 
   ! calculation
