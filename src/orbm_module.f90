@@ -84,6 +84,7 @@ MODULE orbm_module
   
   ! smearing of the delta function
   REAL(DP) :: sigma
+  CHARACTER(80) :: smear 
 
 !-----------------------------------------------------------------------
 END MODULE orbm_module

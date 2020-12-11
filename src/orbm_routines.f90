@@ -27,7 +27,7 @@ SUBROUTINE orbm_readin()
   character(len=80) :: diagonalization, verbosity
   namelist /inputorbm/ job, prefix, tmp_dir, conv_threshold, restart_mode, &
                         q_orbm, iverbosity,  dudk_method, wmin, wmax, nw, &
-                        spline_ps, isolve, max_seconds, verbosity, sigma
+                        spline_ps, isolve, max_seconds, verbosity, sigma, smear
                         
 
   if (.not. ionode .or. my_image_id > 0) goto 400
@@ -53,6 +53,7 @@ SUBROUTINE orbm_readin()
   wmax = 20.d0
   nw = 1001
   sigma = 0.1
+  smear = 'gauss'
 
   ! read input    
   read( 5, inputorbm, err = 200, iostat = ios )
@@ -117,6 +118,7 @@ SUBROUTINE orbm_bcast_input
   call mp_bcast(wmax, root, world_comm)
   call mp_bcast(nw, root, world_comm)
   call mp_bcast(sigma, root, world_comm)
+  call mp_bcast(smear, root, world_comm)
 
 END SUBROUTINE orbm_bcast_input
 #endif
