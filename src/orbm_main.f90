@@ -118,6 +118,8 @@ PROGRAM orbm_main
      call epsilon
   case ( 'mag_dipole' )
      call calc_mag_dipole
+  case ( 'cd' )
+     call rotatory
   case ( 'elec_quadrupole' )
      !call calc_elec_quadrupole
   case default
