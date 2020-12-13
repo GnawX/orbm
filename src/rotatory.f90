@@ -6,13 +6,10 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 !-----------------------------------------------------------------------
-SUBROUTINE epsilon
+SUBROUTINE rotatory
   !-----------------------------------------------------------------------
   !
-  ! This routine calculates the dielectric function
-  ! eps2 = 4*pi^2*e^2/V/omega^2 sum_k |vk|^2 delta(omega_cv - omega)
-  ! eps1 can be obtained by eps2 through Kramers-Kronig transformation
-  ! eps1 = 1 + 8*pi*e^2/V/omega_cv sum_k |vk|^2 /(omega_cv^2 - omega^2) 
+  ! This routine calculates the cd spectra
   ! delta function replaced by lorentzian
   USE kinds,                  ONLY : dp
   USE constants,              ONLY : pi
@@ -25,13 +22,12 @@ SUBROUTINE epsilon
   USE wvfct,                  ONLY : nbnd, npwx, et
   USE lsda_mod,               ONLY : nspin
   USE orbm_module,            ONLY : ry2ha, ci, vel_evc, eta, wmin, wmax, &
-                                     nw, nbnd_occ, sigma, ry2ev
+                                     nw, nbnd_occ, sigma, ry2ev, evc1
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm, npool
   USE mp,                     ONLY : mp_sum, mp_bcast
   USE mp_world,               ONLY : world_comm
-  USE symm_base,              ONLY : nsym
   USE symme,                  ONLY : symmatrix
 
   !-- local variables ----------------------------------------------------
@@ -39,35 +35,36 @@ SUBROUTINE epsilon
 
   ! the following three quantities are for norm-conserving PPs
   complex(dp), allocatable, dimension(:,:,:) :: vmat            ! <n|v|m> 
+  complex(dp), allocatable, dimension(:,:,:, :) :: ps 
   
-  real(dp) :: eps2(nw, 3, 3)
-  real(dp) :: eps1(nw, 3, 3)
+  real(dp) :: rot(nw, 3, 3, 3)
   
   integer :: ik, ios, iunout
-  integer :: i, j, ibnd, jbnd, n, ie
-  real(dp) :: det, wgrid(nw), pref
+  integer :: i, j, k, ibnd, jbnd, n, ie
+  real(dp) :: det, wgrid(nw), pref, mel
   real(dp), external :: get_clock
   integer, external :: find_free_unit
   integer :: npw
 
  
-  call start_clock('epsilon')
+  call start_clock('rotatory')
   !-----------------------------------------------------------------------
   ! allocate memory
   !-----------------------------------------------------------------------
-  allocate ( vmat(nbnd, nbnd, 3), vel_evc(npwx*npol, nbnd, 3))
+  allocate ( vmat(nbnd, nbnd, 3), ps(nbnd, nbnd, 3, 3))
+  allocate ( vel_evc(npwx*npol, nbnd, 3), evc1(npwx*npol, nbnd,3) )
 
   ! print memory estimate
   call orbm_memory_report
 
-  write(stdout, '(5X,''Computing the dielectric function:'',$)')
+  write(stdout, '(5X,''Computing the cd spectra:'',$)')
   write(stdout, *)
  
   do i = 1, nw
      wgrid(i) = wmin + (wmax-wmin)/(nw-1)*(i-1)
   enddo
-  eps1 = 0.d0 
-  eps2 = 0.d0 
+  rot = 0.d0 
+
   !====================================================================
   ! loop over k-points on the pool
   !====================================================================
@@ -82,6 +79,8 @@ SUBROUTINE epsilon
     ! calculate du/dk    
     vel_evc(:,:,:) = (0.d0,0.d0)
     vmat(:,:,:)= (0.d0,0.d0)
+    ps(:,:,:,:) = (0.d0,0.d0)
+    
     do i = 1,3
        call apply_vel(evc, vel_evc(1,1,i), ik, i)
        
@@ -101,28 +100,52 @@ SUBROUTINE epsilon
     
 #ifdef __MPI
     call mp_sum(vmat, intra_pool_comm)
-#endif 
+#endif
+
+    call compute_dudk(ik)
+    
+    do i = 1,3
+       do j = 1,3
+       
+          if (noncolin) then
+     
+             CALL zgemm('C', 'N', nbnd, nbnd, npwx*npol, (1.d0,0.d0), evc1(1,1,j), &
+                    npwx*npol, vel_evc(1,1,i), npwx*npol, (0.d0,0.d0), ps(1,1,j,i), nbnd)
+          else
+       
+             CALL zgemm('C', 'N', nbnd, nbnd, npw, (1.d0,0.d0), evc1(1,1,j), &
+                    npwx, vel_evc(1,1,i), npwx, (0.d0,0.d0), ps(1,1,j,i), nbnd)
+             
+          endif
+          
+       enddo 
+    enddo
+    
+#ifdef __MPI
+    call mp_sum(ps, intra_pool_comm)
+#endif    
+    
+    
 
     do ie = 1, nw
-       pref = 4*pi**2/omega*wk(ik)
+       pref = 4*pi**2/omega/137*wk(ik)
        
        do i = 1, 3
           do j = 1, 3
+             do k = 1, 3
           
-             do ibnd = 1, nbnd_occ(ik)
-                do jbnd = nbnd_occ(ik)+1, nbnd
+                do ibnd = 1, nbnd_occ(ik)
+                   do jbnd = nbnd_occ(ik)+1, nbnd
                 
-                   det = (et(jbnd,ik) - et(ibnd,ik))*ry2ha
-                   !if (det > wmin - 8*sigma .and. det < wmax + 8*sigma &
-                   !    .and. ABS(det-wgrid(ie)) < 8*sigma) then
+                      det = (et(jbnd,ik) - et(ibnd,ik))*ry2ha
+                      mel = REAL( vmat(ibnd,jbnd,j)*( ps(jbnd,ibnd,k,i) - CONJG(ps(ibnd,jbnd,k,i)) ) - &
+                            vmat(ibnd,jbnd,i)*( ps(jbnd,ibnd,k,j) - CONJG(ps(ibnd,jbnd,k,j)) ), DP)
+                      !if (det > wmin - 8*sigma .and. det < wmax + 8*sigma &
+                      !    .and. ABS(det-wgrid(ie)) < 8*sigma) then
                        
-                       eps2(ie,j,i) = eps2(ie,j,i) + pref*CONJG(vmat(jbnd,ibnd,j))* &
-                                      vmat(jbnd,ibnd,i)*sigma/pi/((det-wgrid(ie))**2 &
-                                      + sigma**2)/det**2
-                       eps1(ie,j,i) = eps1(ie,j,i) + pref*CONJG(vmat(jbnd,ibnd,j))* &
-                                      vmat(jbnd,ibnd,i)*2/pi*(det-wgrid(ie))/((det-wgrid(ie))**2 &
-                                      + sigma**2)/det/(det+wgrid(ie))
-                   !endif
+                      rot(ie,i,j,k) = rot(ie,i,j,k) + pref*mel*sigma/pi/((det-wgrid(ie))**2 &
+                                      + sigma**2)/det
+                      !endif
                    
                 enddo
              enddo
@@ -136,73 +159,50 @@ SUBROUTINE epsilon
   enddo ! ik
   
 #ifdef __MPI
-    call mp_sum(eps1, inter_pool_comm)
-    call mp_sum(eps2, inter_pool_comm)
+    call mp_sum(rot, inter_pool_comm)
 #endif 
 
-  do i = 1,3
-     eps1(:,i,i) = 1.d0 + eps1(:,i,i)
-  enddo
-  if (nsym > 1) then
-     do ie = 1, nw
-        call symmatrix( eps2(ie, :, :) )
-        call symmatrix( eps1(ie, :, :) )
-     enddo
-  endif
+
+    do ie = 1, nw
+       call symmatrix( rot(ie, :, :, :) )
+    enddo
+
   
 
   ios = 0
   if ( ionode ) then
      iunout = find_free_unit( )
-     open (unit = iunout, file = 'epsilon_imag.dat', status = 'unknown', iostat = ios)
+     open (unit = iunout, file = 'rotatory.dat', status = 'unknown', iostat = ios)
      rewind (iunout)
   endif
 
   call mp_bcast (ios, ionode_id, world_comm)
-  if ( ios/=0 ) call errore ('epsilon', 'Opening file epsilon_imag.dat', abs (ios) )
+  if ( ios/=0 ) call errore ('epsilon', 'Opening file rotatory.dat', abs (ios) )
 
   if (ionode) then
-     write(iunout, '(7A10)') '#   ENERGY','XX','YY','ZZ','XY','YZ','ZX' 
+     write(iunout, '(10A10)') '#   ENERGY','YZX','ZXY','XYZ','YZY','ZXZ','XYX','YZZ', 'ZXX', 'XYY' 
      do ie = 1, nw
-        write(iunout, '(7F10.4)') wgrid(ie)*ry2ev/ry2ha, eps2(ie,1,1),eps2(ie,2,2), &
-                       eps2(ie,3,3), eps2(ie,1,2),eps2(ie,2,3),eps2(ie,3,1)
+        write(iunout, '(10F10.4)') wgrid(ie)*ry2ev/ry2ha, rot(ie,2,3,1),rot(ie,3,1,2),rot(ie,1,2,3) &
+                       rot(ie,2,3,2),rot(ie,3,1,3),rot(ie,1,2,1),rot(ie,2,3,3),rot(ie,3,1,1),rot(ie,1,2,2)
      enddo
      close(iunout)
   endif
 
-   ios = 0
-  if ( ionode ) then
-     iunout = find_free_unit( )
-     open (unit = iunout, file = 'epsilon_real.dat', status = 'unknown', iostat = ios)
-     rewind (iunout)
-  endif
 
-  call mp_bcast (ios, ionode_id, world_comm)
-  if ( ios/=0 ) call errore ('epsilon', 'Opening file epsilon_real.dat', abs (ios) )
-
-  if (ionode) then
-     write(iunout, '(7A10)') '#   ENERGY','XX','YY','ZZ','XY','YZ','ZX' 
-     do ie = 1, nw
-        write(iunout, '(7F10.4)') wgrid(ie)*ry2ev/ry2ha, eps1(ie,1,1),eps1(ie,2,2), &
-                       eps1(ie,3,3), eps1(ie,1,2),eps1(ie,2,3),eps1(ie,3,1)
-     enddo
-     close(iunout)
-  endif
- 
   !====================================================================
   ! print out results
   !====================================================================
   write(stdout,*)
-  write(stdout,'(5X,''End of dielectric function calculation'')')
+  write(stdout,'(5X,''End of CD calculation'')')
   write(stdout,*)
 
 
   ! free memory as soon as possible
-  deallocate( vel_evc, vmat)
+  deallocate( vel_evc, evc1, vmat, ps)
 
   
   !call restart_cleanup ( )
-  call stop_clock('epsilon')
+  call stop_clock('rotatory')
 
-END SUBROUTINE epsilon
+END SUBROUTINE rotatory
 
