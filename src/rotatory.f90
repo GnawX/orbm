@@ -28,7 +28,6 @@ SUBROUTINE rotatory
                                      inter_pool_comm, intra_pool_comm, npool
   USE mp,                     ONLY : mp_sum, mp_bcast
   USE mp_world,               ONLY : world_comm
-  USE symme,                  ONLY : symmatrix
 
   !-- local variables ----------------------------------------------------
   IMPLICIT NONE
@@ -159,13 +158,13 @@ SUBROUTINE rotatory
   enddo ! ik
   
 #ifdef __MPI
-    call mp_sum(rot, inter_pool_comm)
+  call mp_sum(rot, inter_pool_comm)
 #endif 
 
 
-    do ie = 1, nw
-       call symmatrix( rot(ie, :, :, :) )
-    enddo
+  do ie = 1, nw
+     call sym3tensor( rot(ie, :, :, :) )
+  enddo
 
   
 
@@ -177,7 +176,7 @@ SUBROUTINE rotatory
   endif
 
   call mp_bcast (ios, ionode_id, world_comm)
-  if ( ios/=0 ) call errore ('epsilon', 'Opening file rotatory.dat', abs (ios) )
+  if ( ios/=0 ) call errore ('rotatory', 'Opening file rotatory.dat', abs (ios) )
 
   if (ionode) then
      write(iunout, '(10A10)') '#   ENERGY','YZX','ZXY','XYZ','YZY','ZXZ','XYX','YZZ', 'ZXX', 'XYY' 
