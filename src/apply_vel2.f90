@@ -56,7 +56,7 @@ SUBROUTINE apply_vel2(psi, vel_psi, vel2_psi, ik)
   allocate(vq0(npwx*npol))
   
   do ibnd = 1, nbnd
-     vq0(:) = psi(:,ibnd)*et(ibnd,ik)*ryd_to_hartree
+     vq0(:,ibnd) = psi(:,ibnd)*et(ibnd,ik)*ryd_to_hartree
   enddo
 
   ! set dk (= delta_k ?)
@@ -103,8 +103,22 @@ SUBROUTINE apply_vel2(psi, vel_psi, vel2_psi, ik)
   call deallocate_bec_type (becp)
   
   do i = 1,3
-     vel_psi(:,:,i) = (vq(:,:,i,1) + vq(:,:,i,1))*ryd_to_hartree/(2.d0*dk*tpiba)
+     vel_psi(:,:,i) = (vq(:,:,i,1) + vq(:,:,i,2))*ryd_to_hartree/(2.d0*dk*tpiba)
   enddo
+
+  do i = 1,3
+     vel2_psi(:,:,i,i) = (vq(:,:,i,1) + vq(:,:,i,2) - 2.d0*vq0(:,:))*ryd_to_hartree/(dk*dk*tpiba*tpiba)
+  enddo
+  vel2_psi(:,:,2,3) = (vq2(:,:,1,1) + vq2(:,:,1,2) + 2.d0*vq0(:,:) - vq(:,:,2,1) - &
+                       vq(:,:,2,2) - vq(:,:,3,1) - vq(:,:,3,2))*ryd_to_hartree/(2.d0*dk*dk*tpiba*tpiba)
+  vel2_psi(:,:,3,1) = (vq2(:,:,2,1) + vq2(:,:,2,2) + 2.d0*vq0(:,:) - vq(:,:,3,1) - &
+                       vq(:,:,3,2) - vq(:,:,1,1) - vq(:,:,1,2))*ryd_to_hartree/(2.d0*dk*dk*tpiba*tpiba)
+  vel2_psi(:,:,1,2) = (vq2(:,:,3,1) + vq2(:,:,3,2) + 2.d0*vq0(:,:) - vq(:,:,1,1) - &
+                       vq(:,:,1,2) - vq(:,:,2,1) - vq(:,:,2,2))*ryd_to_hartree/(2.d0*dk*dk*tpiba*tpiba)
+  vel2_psi(:,:,3,2) = vel2_psi(:,:,2,3)
+  vel2_psi(:,:,1,3) = vel2_psi(:,:,3,1)
+  vel2_psi(:,:,2,1) = vel2_psi(:,:,1,2)
+
   !====================================================================
   ! compute (1/2|dk|) ( H_{k+dk} |psi> - H_{k-dk}|psi> )
   !====================================================================
