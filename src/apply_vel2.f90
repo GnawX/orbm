@@ -11,7 +11,7 @@ SUBROUTINE apply_vel2(psi, vel_psi, vel2_psi, ik)
   !-----------------------------------------------------------------------
   USE kinds,                ONLY : DP
   USE klist,                ONLY : xk, igk_k, ngk
-  USE wvfct,                ONLY : nbnd, npwx, npw, current_k, et
+  USE wvfct,                ONLY : nbnd, npwx, current_k, et
   USE lsda_mod,             ONLY : current_spin, isk, lsda
   USE becmod,               ONLY : becp, allocate_bec_type, deallocate_bec_type
   USE cell_base,            ONLY : tpiba
@@ -32,7 +32,7 @@ SUBROUTINE apply_vel2(psi, vel_psi, vel2_psi, ik)
   complex(dp), allocatable :: vq(:,:,:,:)
   complex(dp), allocatable :: vq2(:,:,:,:)
   real(dp) :: dk, oldk(3)
-  integer :: iq(3,3), iq2(3,3), i, ibnd
+  integer :: iq(3,3), iq2(3,3), i, ibnd, npw
 
   call start_clock('apply_vel2')
   
