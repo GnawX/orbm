@@ -36,7 +36,7 @@ MODULE orbm_module
   
   
   ! small number of energy difference
-  REAL(DP), PARAMETER :: eta = 1.e-5_DP 
+  REAL(DP), PARAMETER :: eta = 1.e-8_DP 
  
   ! number of occupied bands at each k-point
   INTEGER :: nbnd_occ(npk)

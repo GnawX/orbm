@@ -28,6 +28,7 @@ SUBROUTINE rotatory
                                      inter_pool_comm, intra_pool_comm, npool
   USE mp,                     ONLY : mp_sum, mp_bcast
   USE mp_world,               ONLY : world_comm
+  !USE symme,                  ONLY : symmatrix
 
   !-- local variables ----------------------------------------------------
   IMPLICIT NONE
@@ -36,14 +37,14 @@ SUBROUTINE rotatory
   complex(dp), allocatable, dimension(:,:,:) :: vmat            ! <n|v|m> 
   complex(dp), allocatable, dimension(:,:,:, :) :: ps 
   
-  real(dp) :: rot(nw, 3, 3, 3)
+  real(dp) :: rot(nw, 3, 3)
   
-  integer :: ik, ios, iunout
+  integer :: ik, ios, iunout,id
   integer :: i, j, k, ibnd, jbnd, n, ie
   real(dp) :: det, wgrid(nw), pref, mel
   real(dp), external :: get_clock
   integer, external :: find_free_unit
-  integer :: npw
+  integer :: npw, ind(2,3)
 
  
   call start_clock('rotatory')
@@ -64,6 +65,9 @@ SUBROUTINE rotatory
   enddo
   rot = 0.d0 
 
+  ind(:,1) = (/2,3/)
+  ind(:,2) = (/3,1/)
+  ind(:,3) = (/1,2/)
   !====================================================================
   ! loop over k-points on the pool
   !====================================================================
@@ -129,27 +133,31 @@ SUBROUTINE rotatory
     do ie = 1, nw
        pref = 4*pi**2/omega/137*wk(ik)
        
-       do i = 1, 3
-          do j = 1, 3
+       do id = 1, 3
+          i = ind(1,id); j = ind(2,id)
+          !do j = 1, 3
              do k = 1, 3
           
                 do ibnd = 1, nbnd_occ(ik)
                    do jbnd = nbnd_occ(ik)+1, nbnd
                 
                       det = (et(jbnd,ik) - et(ibnd,ik))*ry2ha
-                      mel = REAL( vmat(ibnd,jbnd,j)*( ps(jbnd,ibnd,k,i) - CONJG(ps(ibnd,jbnd,k,i)) ) - &
+                      mel = REAL( vmat(ibnd,jbnd,j)*( ps(jbnd,ibnd,k,i) - CONJG(ps(ibnd,jbnd,k,i)) )  - &
                             vmat(ibnd,jbnd,i)*( ps(jbnd,ibnd,k,j) - CONJG(ps(ibnd,jbnd,k,j)) ), DP)
+                      !print *, mel
                       !if (det > wmin - 8*sigma .and. det < wmax + 8*sigma &
                       !    .and. ABS(det-wgrid(ie)) < 8*sigma) then
                        
-                      rot(ie,i,j,k) = rot(ie,i,j,k) + pref*mel*sigma/pi/((det-wgrid(ie))**2 &
+                      rot(ie,id,k) = rot(ie,id,k) + pref*mel*sigma/pi/((det-wgrid(ie))**2 &
                                       + sigma**2)/det
+                     ! rot(ie,i,j,k) = rot(ie,i,j,k) + pref*mel*sigma/pi/((det-wgrid(ie))**2 &
+                     !                 + sigma**2)/det
                       !endif
-                   
+                   enddo
                 enddo
+
              enddo
-             
-          enddo
+          !enddo
        enddo
        
     enddo
@@ -162,11 +170,12 @@ SUBROUTINE rotatory
 #endif 
 
 
+  !do ie = 1, nw
+  !   call sym3tensor( rot(ie, :, :, :) )
+  !enddo
   do ie = 1, nw
-     call sym3tensor( rot(ie, :, :, :) )
+     call symaxialtensor2( rot(ie, :, :)  )
   enddo
-
-  
 
   ios = 0
   if ( ionode ) then
@@ -179,10 +188,12 @@ SUBROUTINE rotatory
   if ( ios/=0 ) call errore ('rotatory', 'Opening file rotatory.dat', abs (ios) )
 
   if (ionode) then
-     write(iunout, '(10A10)') '#   ENERGY','YZX','ZXY','XYZ','YZY','ZXZ','XYX','YZZ', 'ZXX', 'XYY' 
+     write(iunout, '(10A10)') '#   ENERGY','YZX','YZY','YZZ','ZXX','ZXY','ZXZ','XYX', 'XYY', 'XYZ' 
      do ie = 1, nw
-        write(iunout, '(10F10.4)') wgrid(ie)*ry2ev/ry2ha, rot(ie,2,3,1),rot(ie,3,1,2),rot(ie,1,2,3) &
-                       rot(ie,2,3,2),rot(ie,3,1,3),rot(ie,1,2,1),rot(ie,2,3,3),rot(ie,3,1,1),rot(ie,1,2,2)
+        !write(iunout, '(F10.4,9E12.4)') wgrid(ie)*ry2ev/ry2ha, rot(ie,2,3,1),rot(ie,3,1,2),rot(ie,1,2,3), &
+        !               rot(ie,2,3,2),rot(ie,3,1,3),rot(ie,1,2,1),rot(ie,2,3,3),rot(ie,3,1,1),rot(ie,1,2,2)
+        write(iunout, '(F10.4,9E12.4)') wgrid(ie)*ry2ev/ry2ha, ((rot(ie,i,j),j=1,3),i=1,3)  
+        !write(iunout, '(F10.4,3E12.4)') wgrid(ie)*ry2ev/ry2ha, rot(ie,2,3,1),rot(ie,3,2,1),rot(ie,1,1,1)
      enddo
      close(iunout)
   endif

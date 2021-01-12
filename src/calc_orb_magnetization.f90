@@ -42,12 +42,13 @@ SUBROUTINE calc_orb_magnetization
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm
   USE mp,                     ONLY : mp_sum
+  USE symme,                  ONLY : symv
 
   !-- local variables ----------------------------------------------------
   IMPLICIT NONE
 
   ! temporary working array, same size as evc/evq
-  complex(dp), allocatable :: aux(:,:)
+  !complex(dp), allocatable :: aux(:,:)
   complex(dp), allocatable :: hpsi(:)
   real(dp) :: berry(3), mlc(3), mic(3), morb(3)
 
@@ -72,7 +73,7 @@ SUBROUTINE calc_orb_magnetization
   ! allocate memory
   !-----------------------------------------------------------------------
   allocate ( vel_evc(npwx*npol,nbnd, 3), evc1(npwx*npol, nbnd, 3))
-  allocate ( aux(npwx*npol,nbnd),  hpsi(npwx*npol) )
+  allocate (   hpsi(npwx*npol) )
 
   ! print memory estimate
   call orbm_memory_report
@@ -112,10 +113,11 @@ SUBROUTINE calc_orb_magnetization
     vel_evc(:,:,:) = (0.d0,0.d0)
     do i = 1,3
        call apply_vel(evc, vel_evc(1,1,i), ik, i)
-       aux(:,:) = vel_evc(:,:,i)
-       call greenfunction(ik, aux, evc1(1,1,i))
+       !aux(:,:) = vel_evc(:,:,i)
+       !call greenfunction(ik, aux, evc1(1,1,i))
     enddo
-
+  
+    call compute_dudk(ik)
        
     call allocate_bec_type(nkb, nbnd, becp)
 
@@ -155,10 +157,11 @@ SUBROUTINE calc_orb_magnetization
   
   mlc = ( mlc - ef*berry )*ry2ha
   mic = ( mic - ef*berry )*ry2ha
+  call symv( mlc ) 
+  call symv( mic ) 
   morb = mlc + mic ! Borh mag
   ! in AU, Bohr magnetron is 1/2
 
-  
   
   !====================================================================
   ! print out results
@@ -172,7 +175,7 @@ SUBROUTINE calc_orb_magnetization
   write(stdout,*)
 
   ! free memory as soon as possible
-  deallocate( vel_evc, aux, evc1, hpsi )
+  deallocate( vel_evc, evc1, hpsi )
 
   
   !call restart_cleanup ( )

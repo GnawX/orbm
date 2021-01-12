@@ -10,9 +10,9 @@ MODFLAGS = $(MOD_FLAG)$(QE_SOURCE)/iotk/src $(MOD_FLAG)$(QE_SOURCE)/Modules \
            $(MOD_FLAG)$(QE_SOURCE)/PW/src $(MOD_FLAG)$(QE_SOURCE)/upflib \
            $(MOD_FLAG)$(QE_SOURCE)/UtilXlib $(MOD_FLAG).
 
-GIPAW_OBJS = orbm_module.o orbm_main.o stop_code.o orbm_setup.o \
+GIPAW_OBJS = orbm_module.o orbm_main.o stop_code.o orbm_setup.o symaxialtensor2.o \
 	     orbm_routines.o greenfunction.o compute_u_kq.o  compute_dudk.o \
-	     cgsolve_all.o cg_psi.o ch_psi_all.o epsilon.o delta.o\
+	     cgsolve_all.o cg_psi.o ch_psi_all.o epsilon.o rotatory.o \
 	     init_us_2_no_phase.o calc_elec_dipole.o poolcollect_z.o \
 	     velocity.o calc_orb_magnetization.o calc_mag_dipole.o 
 
