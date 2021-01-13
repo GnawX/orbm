@@ -22,7 +22,7 @@
   ! allocate overlap matrix 
   allocate(overlap(nbnd_occ(ik), nbnd_occ(ik)))
   allocate(vel(npwx*npol,nbnd,3))
-  allocate(invmass(nbnd,nbnd,3,3))
+  
   !allocate(evc0(npwx*npol,nbnd))
 
   dk = q_orbm/2.d0
