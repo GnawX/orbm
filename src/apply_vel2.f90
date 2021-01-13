@@ -16,7 +16,7 @@ SUBROUTINE apply_vel2(psi, vel_psi, vel2_psi, ik)
   USE becmod,               ONLY : becp, allocate_bec_type, deallocate_bec_type
   USE cell_base,            ONLY : tpiba
   USE uspp,                 ONLY : nkb, vkb
-  USE orbm_module,          ONLY : q_orbm
+  USE orbm_module,          ONLY : q_orbm, ry2ha
   USE noncollin_module,     ONLY : npol
 
   !-- paramters ----------------------------------------------------------
@@ -27,7 +27,7 @@ SUBROUTINE apply_vel2(psi, vel_psi, vel2_psi, ik)
   COMPLEX(DP), INTENT(OUT) :: vel2_psi(npwx*npol,nbnd,3,3)
 
   !-- local variables ----------------------------------------------------
-  real(dp), parameter :: ryd_to_hartree = 0.5d0
+  !real(dp), parameter :: ryd_to_hartree = 0.5d0
   complex(dp), allocatable :: vkb_save(:,:), vq0(:,:)
   complex(dp), allocatable :: vq(:,:,:,:)
   complex(dp), allocatable :: vq2(:,:,:,:)
@@ -99,18 +99,18 @@ SUBROUTINE apply_vel2(psi, vel_psi, vel2_psi, ik)
   call deallocate_bec_type (becp)
   
   do i = 1,3
-     vel_psi(:,:,i) = (vq(:,:,i,1) + vq(:,:,i,2))*ryd_to_hartree/(2.d0*dk*tpiba)
+     vel_psi(:,:,i) = (vq(:,:,i,1) + vq(:,:,i,2))*ry2ha/(2.d0*dk*tpiba)
   enddo
 
   do i = 1,3
-     vel2_psi(:,:,i,i) = (vq(:,:,i,1) + vq(:,:,i,2) - 2.d0*vq0(:,:))*ryd_to_hartree/(dk*dk*tpiba*tpiba)
+     vel2_psi(:,:,i,i) = (vq(:,:,i,1) + vq(:,:,i,2) - 2.d0*vq0(:,:))*ry2ha/(dk*dk*tpiba*tpiba)
   enddo
   vel2_psi(:,:,2,3) = (vq2(:,:,1,1) + vq2(:,:,1,2) + 2.d0*vq0(:,:) - vq(:,:,2,1) - &
-                       vq(:,:,2,2) - vq(:,:,3,1) - vq(:,:,3,2))*ryd_to_hartree/(2.d0*dk*dk*tpiba*tpiba)
+                       vq(:,:,2,2) - vq(:,:,3,1) - vq(:,:,3,2))*ry2ha/(2.d0*dk*dk*tpiba*tpiba)
   vel2_psi(:,:,3,1) = (vq2(:,:,2,1) + vq2(:,:,2,2) + 2.d0*vq0(:,:) - vq(:,:,3,1) - &
-                       vq(:,:,3,2) - vq(:,:,1,1) - vq(:,:,1,2))*ryd_to_hartree/(2.d0*dk*dk*tpiba*tpiba)
+                       vq(:,:,3,2) - vq(:,:,1,1) - vq(:,:,1,2))*ry2ha/(2.d0*dk*dk*tpiba*tpiba)
   vel2_psi(:,:,1,2) = (vq2(:,:,3,1) + vq2(:,:,3,2) + 2.d0*vq0(:,:) - vq(:,:,1,1) - &
-                       vq(:,:,1,2) - vq(:,:,2,1) - vq(:,:,2,2))*ryd_to_hartree/(2.d0*dk*dk*tpiba*tpiba)
+                       vq(:,:,1,2) - vq(:,:,2,1) - vq(:,:,2,2))*ry2ha/(2.d0*dk*dk*tpiba*tpiba)
   vel2_psi(:,:,3,2) = vel2_psi(:,:,2,3)
   vel2_psi(:,:,1,3) = vel2_psi(:,:,3,1)
   vel2_psi(:,:,2,1) = vel2_psi(:,:,1,2)
