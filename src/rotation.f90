@@ -6,7 +6,7 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 !-----------------------------------------------------------------------
-SUBROUTINE rotatory
+SUBROUTINE rotation
   !-----------------------------------------------------------------------
   !
   ! This routine calculates the cd spectra
@@ -22,7 +22,8 @@ SUBROUTINE rotatory
   USE wvfct,                  ONLY : nbnd, npwx, et
   USE lsda_mod,               ONLY : nspin
   USE orbm_module,            ONLY : ry2ha, ci, vel_evc, eta, wmin, wmax, &
-                                     nw, nbnd_occ, sigma, ry2ev, evc1
+                                     nw, nbnd_occ, sigma, ry2ev, evc1, vel2_evc, &
+                                     invmass
   USE buffers,                ONLY : get_buffer
   USE mp_pools,               ONLY : my_pool_id, me_pool, root_pool,  &
                                      inter_pool_comm, intra_pool_comm, npool
@@ -35,6 +36,7 @@ SUBROUTINE rotatory
 
   ! the following three quantities are for norm-conserving PPs
   complex(dp), allocatable, dimension(:,:,:) :: vmat            ! <n|v|m> 
+  complex(dp), allocatable, dimension(:,:,:,:) :: v2mat
   complex(dp), allocatable, dimension(:,:,:, :) :: ps 
   
   real(dp) :: rot(nw, 3, 3)
@@ -47,12 +49,14 @@ SUBROUTINE rotatory
   integer :: npw, ind(2,3)
 
  
-  call start_clock('rotatory')
+  call start_clock('rotation')
   !-----------------------------------------------------------------------
   ! allocate memory
   !-----------------------------------------------------------------------
-  allocate ( vmat(nbnd, nbnd, 3), ps(nbnd, nbnd, 3, 3))
+  allocate ( vmat(nbnd, nbnd, 3), v2mat(nbnd, nbnd, 3, 3), ps(nbnd, nbnd, 3, 3))
   allocate ( vel_evc(npwx*npol, nbnd, 3), evc1(npwx*npol, nbnd,3) )
+  allocate ( vel2_evc(npwx*npol, nbnd, 3, 3) )
+  allocate ( invmass(nbnd,nbnd,3,3) )
 
   ! print memory estimate
   call orbm_memory_report
@@ -81,31 +85,40 @@ SUBROUTINE rotatory
     
     ! calculate du/dk    
     vel_evc(:,:,:) = (0.d0,0.d0)
+    vel2_evc(:,:,:) = (0.d0,0.d0)
     vmat(:,:,:)= (0.d0,0.d0)
+    v2mat(:,:,:)= (0.d0,0.d0)
     ps(:,:,:,:) = (0.d0,0.d0)
     
-    do i = 1,3
-       call apply_vel(evc, vel_evc(1,1,i), ik, i)
-       
-       ! calculate the velocity matrix ps(nbnd,nbnd)
+    call apply_vel2(evc, vel_evc, vel2_evc, ik)
+    
+    do i = 1, 3
        if (noncolin) then
-     
           CALL zgemm('C', 'N', nbnd, nbnd, npwx*npol, (1.d0,0.d0), evc(1,1), &
                     npwx*npol, vel_evc(1,1,i), npwx*npol, (0.d0,0.d0), vmat(1,1,i), nbnd)
        else
-       
           CALL zgemm('C', 'N', nbnd, nbnd, npw, (1.d0,0.d0), evc(1,1), &
                     npwx, vel_evc(1,1,i), npwx, (0.d0,0.d0), vmat(1,1,i), nbnd)
        endif
-       
+       do j = 1, 3
+          if (noncolin) then
+             CALL zgemm('C', 'N', nbnd, nbnd, npwx*npol, (1.d0,0.d0), evc(1,1), &
+                    npwx*npol, vel2_evc(1,1,j,i), npwx*npol, (0.d0,0.d0), v2mat(1,1,j,i), nbnd)
+          else
+             CALL zgemm('C', 'N', nbnd, nbnd, npw, (1.d0,0.d0), evc(1,1), &
+                    npwx, vel_evc(1,1,j,i), npwx, (0.d0,0.d0), v2mat(1,1,j,i), nbnd)
+          endif
+       enddo
     enddo
    
     
 #ifdef __MPI
     call mp_sum(vmat, intra_pool_comm)
+    call mp_sum(v2mat, intra_pool_comm)
 #endif
 
-    call compute_dudk(ik)
+    ! calculate evc1 and invmass
+    call covariant_der(ik)
     
     do i = 1,3
        do j = 1,3
@@ -123,12 +136,23 @@ SUBROUTINE rotatory
           
        enddo 
     enddo
+   
     
 #ifdef __MPI
     call mp_sum(ps, intra_pool_comm)
 #endif    
     
-    
+    do ibnd = 1, nbnd_occ(ik)
+       do jbnd = nbnd_occ(ik)+1, nbnd
+          do i = 1, 3
+             do j = 1, 3
+       
+                ps(jbnd,ibnd,j,i) = invmass(jbnd,ibnd,j,i) - v2mat(jbnd,ibnd,j,i) - CONJG(ps(ibnd,jbnd,j,i))
+                
+             enddo
+          enddo
+       enddo
+    enddo
 
     do ie = 1, nw
        pref = 4*pi**2/omega/137*wk(ik)
@@ -180,12 +204,12 @@ SUBROUTINE rotatory
   ios = 0
   if ( ionode ) then
      iunout = find_free_unit( )
-     open (unit = iunout, file = 'rotatory.dat', status = 'unknown', iostat = ios)
+     open (unit = iunout, file = 'rotation.dat', status = 'unknown', iostat = ios)
      rewind (iunout)
   endif
 
   call mp_bcast (ios, ionode_id, world_comm)
-  if ( ios/=0 ) call errore ('rotatory', 'Opening file rotatory.dat', abs (ios) )
+  if ( ios/=0 ) call errore ('rotation', 'Opening file rotatory.dat', abs (ios) )
 
   if (ionode) then
      write(iunout, '(10A10)') '#   ENERGY','YZX','YZY','YZZ','ZXX','ZXY','ZXZ','XYX', 'XYY', 'XYZ' 
@@ -208,11 +232,11 @@ SUBROUTINE rotatory
 
 
   ! free memory as soon as possible
-  deallocate( vel_evc, evc1, vmat, ps)
+  deallocate( vel_evc, evc1, vel2_evc, invmass, vmat, v2mat, ps)
 
   
   !call restart_cleanup ( )
-  call stop_clock('rotatory')
+  call stop_clock('rotation')
 
-END SUBROUTINE rotatory
+END SUBROUTINE rotation
 
