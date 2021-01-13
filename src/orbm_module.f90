@@ -50,8 +50,11 @@ MODULE orbm_module
   
   ! velocity operator applied to evc v|psi> 
   ! derivative of evc w.r.t k  du/dk
+  ! inverse effective mass tensor
   COMPLEX(DP), ALLOCATABLE :: vel_evc(:,:,:)
   COMPLEX(DP), ALLOCATABLE :: evc1(:,:,:)
+  COMPLEX(DP), ALLOCATABLE :: invmass(:,:,:,:)
+  
 
   ! convergence threshold for diagonalizationa and greenfunction
   REAL(DP) :: conv_threshold
