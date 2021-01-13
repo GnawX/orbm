@@ -77,6 +77,7 @@
       xkold(:) = xk(:,ik)
       xk(:,ik) = xk(:,ik) + q(:)
       
+      vel = 0.d0
       do jpol = 1,3
       
          call apply_vel(evq, vel(1,1,jpol), ik, jpol)
