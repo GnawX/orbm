@@ -49,9 +49,11 @@ MODULE orbm_module
   COMPLEX(DP), ALLOCATABLE :: evq(:,:)
   
   ! velocity operator applied to evc v|psi> 
+  ! first order velocity operator 
   ! derivative of evc w.r.t k  du/dk
   ! inverse effective mass tensor
   COMPLEX(DP), ALLOCATABLE :: vel_evc(:,:,:)
+  COMPLEX(DP), ALLOCATABLE :: vel2_evc(:,:,:,:)
   COMPLEX(DP), ALLOCATABLE :: evc1(:,:,:)
   COMPLEX(DP), ALLOCATABLE :: invmass(:,:,:,:)
   
